@@ -31,7 +31,7 @@ export async function GET(req: Request) {
         const role = searchParams.get('role');
         const kycStatus = searchParams.get('kycStatus');
 
-        const query: any = {};
+        let query: any = {};
         if (role) query.role = role;
         if (kycStatus) query.kycStatus = kycStatus;
 

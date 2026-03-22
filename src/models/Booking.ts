@@ -6,8 +6,6 @@ export interface IBooking extends Document {
   startDate: Date;
   endDate: Date;
   totalAmount: number;
-  platformFee: number;
-  vendorAmount: number;
   status: 'pending' | 'confirmed' | 'cancelled';
   paymentId?: string;
   orderId: string;
@@ -20,8 +18,6 @@ const BookingSchema: Schema<IBooking> = new Schema({
   startDate: { type: Date, required: true },
   endDate: { type: Date, required: true },
   totalAmount: { type: Number, required: true },
-  platformFee: { type: Number, default: 0 },
-  vendorAmount: { type: Number, default: 0 },
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled'], default: 'pending' },
   paymentId: { type: String },
   orderId: { type: String, required: true },

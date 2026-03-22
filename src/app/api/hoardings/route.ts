@@ -42,7 +42,7 @@ export async function GET(req: Request) {
     }
 
     // 2. Public View: Fetch approved listings (with search)
-    const query: any = { status: 'approved' }; // Default to showing only approved
+    let query: any = { status: 'approved' }; // Default to showing only approved
 
     // Check if admin is requesting to show all (Optional future enhancement)
     const cookieStore = await cookies();

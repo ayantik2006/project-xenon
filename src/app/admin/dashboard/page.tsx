@@ -21,8 +21,6 @@ import {
   Shield,
   TrendingUp,
   CreditCard,
-  MessageSquare,
-  Send,
 } from "lucide-react";
 
 interface Stats {
@@ -39,9 +37,7 @@ interface Stats {
   };
   bookings: {
     total: number;
-    confirmed: number;
-    totalGMV: number;
-    platformRevenue: number;
+    active: number;
   };
 }
 
@@ -100,7 +96,7 @@ interface Booking {
   createdAt: string;
 }
 
-type TabType = "overview" | "users" | "hoardings" | "payments" | "messages";
+type TabType = "overview" | "users" | "hoardings" | "payments";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -137,12 +133,6 @@ export default function AdminDashboard() {
   }>({ isOpen: false, user: null, loading: false });
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  // Message states
-  const [adminMessages, setAdminMessages] = useState<any[]>([]);
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  const [adminReply, setAdminReply] = useState("");
-  const [messageLoading, setMessageLoading] = useState(false);
-
   // Check authentication
   useEffect(() => {
     const checkAuth = async () => {
@@ -174,7 +164,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!authChecked) return;
 
-    const fetchStatsData = async () => {
+    const fetchStats = async () => {
       try {
         const res = await fetchWithAuth("/api/admin/stats");
         if (res.ok) {
@@ -188,104 +178,10 @@ export default function AdminDashboard() {
       }
     };
 
-    fetchStatsData();
-
-    // Polling for messages
-    const pollInterval = setInterval(() => {
-      fetchAdminMessages();
-    }, 4000);
-
-    return () => clearInterval(pollInterval);
+    fetchStats();
   }, [authChecked]);
 
-  const fetchAdminMessages = async () => {
-    setMessageLoading(true);
-    console.log("[AdminDashboard] Fetching inquiries...");
-    try {
-      const res = await fetchWithAuth("/api/admin/messages");
-      console.log("[AdminDashboard] Fetch Response Status:", res.status);
-      if (res.ok) {
-        const data = await res.json();
-        console.log("[AdminDashboard] Messages received:", data.messages?.length || 0);
-        setAdminMessages(data.messages || []);
-      } else {
-        const err = await res.json();
-        console.error("[AdminDashboard] Fetch failed:", err);
-      }
-    } catch (error) {
-      console.error("[AdminDashboard] Error fetching messages:", error);
-    } finally {
-      setMessageLoading(false);
-    }
-  };
-
-  const handleSendReply = async () => {
-    if (!adminReply.trim() || !selectedThreadId) return;
-
-    console.log("[AdminDashboard] Sending reply to thread:", selectedThreadId);
-    try {
-      const res = await fetchWithAuth("/api/admin/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          receiver: selectedThreadId,
-          content: adminReply,
-        }),
-      });
-
-      console.log("[AdminDashboard] Reply send status:", res.status);
-      if (res.ok) {
-        const data = await res.json();
-        console.log("[AdminDashboard] Reply sent successfully:", data.data);
-        setAdminMessages((prev) => [...prev, data.data]);
-        setAdminReply("");
-      } else {
-        const err = await res.json();
-        console.error("[AdminDashboard] Reply failed:", err);
-      }
-    } catch (error) {
-      console.error("[AdminDashboard] Error sending reply:", error);
-    }
-  };
-
-  const getGroupedMessages = () => {
-    const groups: { [key: string]: any } = {};
-    adminMessages.forEach((m) => {
-      // We want to group by the 'other person' (not the admin themselves)
-      const otherPerson = m.sender?.role === 'admin' ? m.receiver : m.sender;
-      
-      const key = otherPerson?._id || m.email || "guest";
-      
-      if (!groups[key]) {
-        groups[key] = {
-          id: key,
-          name: otherPerson?.name || m.name || m.email || "Guest User",
-          messages: [],
-          lastMessage: m.content,
-          time: m.createdAt,
-        };
-      }
-      groups[key].messages.push(m);
-      if (new Date(m.createdAt) > new Date(groups[key].time)) {
-        groups[key].lastMessage = m.content;
-        groups[key].time = m.createdAt;
-      }
-    });
-    // Sort groups by latest message
-    return Object.values(groups).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-  };
-
-  const groupedThreads = getGroupedMessages();
-  const activeThread = groupedThreads.find((t) => t.id === selectedThreadId) || groupedThreads[0];
-
-  useEffect(() => {
-    console.log("[AdminDashboard] State Update: Admin Messages Count =", adminMessages.length);
-    console.log("[AdminDashboard] State Update: Grouped Threads Count =", groupedThreads.length);
-    if (activeThread) {
-      console.log("[AdminDashboard] Active Thread:", activeThread.name, "Messages:", activeThread.messages.length);
-    }
-  }, [adminMessages, groupedThreads, activeThread]);
-
+  // Fetch users
   const fetchUsers = async () => {
     try {
       let url = "/api/admin/users";
@@ -304,6 +200,7 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch hoardings
   const fetchHoardings = async () => {
     try {
       let url = "/api/admin/hoardings";
@@ -321,7 +218,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchBookingsData = async () => {
+  // Fetch bookings/payments
+  const fetchBookings = async () => {
     try {
       let url = "/api/admin/bookings";
       if (bookingStatusFilter) {
@@ -342,7 +240,7 @@ export default function AdminDashboard() {
     if (!authChecked) return;
     if (activeTab === "users") fetchUsers();
     if (activeTab === "hoardings") fetchHoardings();
-    if (activeTab === "payments") fetchBookingsData();
+    if (activeTab === "payments") fetchBookings();
   }, [
     authChecked,
     activeTab,
@@ -351,26 +249,6 @@ export default function AdminDashboard() {
     hoardingStatusFilter,
     bookingStatusFilter,
   ]);
-
-  const fetchStats = async () => {
-    try {
-      const res = await fetchWithAuth("/api/admin/stats");
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data.stats);
-      }
-    } catch (error) {
-      console.error("Failed to fetch stats", error);
-    }
-  };
-
-  if (loading || !authChecked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 animate-spin text-[#2563eb]" />
-      </div>
-    );
-  }
 
   // Update user KYC status
   const handleUpdateKYC = async (userId: string, status: string) => {
@@ -455,6 +333,18 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchStats = async () => {
+    try {
+      const res = await fetchWithAuth("/api/admin/stats");
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data.stats);
+      }
+    } catch (error) {
+      console.error("Failed to fetch stats", error);
+    }
+  };
+
   // View user details
   const handleViewUserDetails = async (userId: string) => {
     setUserDetailsModal({ isOpen: true, user: null, loading: true });
@@ -472,6 +362,14 @@ export default function AdminDashboard() {
       setUserDetailsModal({ isOpen: false, user: null, loading: false });
     }
   };
+
+  if (loading || !authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 animate-spin text-[#2563eb]" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -493,42 +391,48 @@ export default function AdminDashboard() {
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">Platform Revenue</p>
-                  <p className="text-2xl font-bold text-blue-600 mt-1">
-                    ₹{stats.bookings.platformRevenue?.toLocaleString() || 0}
+                  <p className="text-sm text-gray-500 font-medium">
+                    Total Users
                   </p>
-                  <p className="text-[10px] text-gray-400 mt-1 uppercase font-black italic tracking-widest">
-                    Earnings
+                  <p className="text-3xl font-bold text-gray-900 mt-1">
+                    {stats.users.total}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {stats.users.vendors} vendors, {stats.users.buyers} buyers
                   </p>
                 </div>
-                <TrendingUp className="text-blue-500" size={32} />
+                <Users className="text-blue-500" size={32} />
               </div>
             </div>
 
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">Total Volume (GMV)</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
-                    ₹{stats.bookings.totalGMV?.toLocaleString() || 0}
+                  <p className="text-sm text-gray-500 font-medium">
+                    Total Hoardings
                   </p>
-                  <p className="text-[10px] text-gray-400 mt-1 uppercase font-black italic tracking-widest">
-                    {stats.bookings.confirmed} Confirmations
+                  <p className="text-3xl font-bold text-gray-900 mt-1">
+                    {stats.hoardings.total}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {stats.hoardings.approved} approved
                   </p>
                 </div>
-                <CreditCard className="text-indigo-500" size={32} />
+                <Building2 className="text-green-500" size={32} />
               </div>
             </div>
 
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">Pending KYC</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                  <p className="text-sm text-gray-500 font-medium">
+                    Pending KYC
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900 mt-1">
                     {stats.users.pendingKYC}
                   </p>
-                  <p className="text-[10px] text-gray-400 mt-1 uppercase font-black italic tracking-widest">
-                    Requires Audit
+                  <p className="text-xs text-gray-400 mt-1">
+                    Requires approval
                   </p>
                 </div>
                 <Clock className="text-yellow-500" size={32} />
@@ -538,15 +442,17 @@ export default function AdminDashboard() {
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">Live Inventory</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
-                    {stats.hoardings.approved}
+                  <p className="text-sm text-gray-500 font-medium">
+                    Total Bookings
                   </p>
-                  <p className="text-[10px] text-gray-400 mt-1 uppercase font-black italic tracking-widest">
-                    Total: {stats.hoardings.total}
+                  <p className="text-3xl font-bold text-gray-900 mt-1">
+                    {stats.bookings.total}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {stats.bookings.active} active
                   </p>
                 </div>
-                <Building2 className="text-green-500" size={32} />
+                <ShoppingCart className="text-purple-500" size={32} />
               </div>
             </div>
           </div>
@@ -596,17 +502,6 @@ export default function AdminDashboard() {
               >
                 <CreditCard size={18} />
                 Payments
-              </button>
-              <button
-                onClick={() => setActiveTab("messages")}
-                className={`flex-1 px-6 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 ${
-                  activeTab === "messages"
-                    ? "bg-[#2563eb] text-white"
-                    : "text-gray-600 hover:bg-gray-50"
-                }`}
-              >
-                <MessageSquare size={18} />
-                Messages
               </button>
             </div>
           </div>
@@ -959,6 +854,38 @@ export default function AdminDashboard() {
                   </select>
                 </div>
 
+                {/* Stats Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-green-50 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-green-600 uppercase">
+                      Total Revenue
+                    </p>
+                    <p className="text-2xl font-bold text-green-700">
+                      ₹
+                      {bookings
+                        .filter((b) => b.status === "confirmed")
+                        .reduce((sum, b) => sum + b.totalAmount, 0)
+                        .toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="bg-blue-50 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-blue-600 uppercase">
+                      Confirmed Bookings
+                    </p>
+                    <p className="text-2xl font-bold text-blue-700">
+                      {bookings.filter((b) => b.status === "confirmed").length}
+                    </p>
+                  </div>
+                  <div className="bg-yellow-50 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-yellow-600 uppercase">
+                      Pending Payments
+                    </p>
+                    <p className="text-2xl font-bold text-yellow-700">
+                      {bookings.filter((b) => b.status === "pending").length}
+                    </p>
+                  </div>
+                </div>
+
                 {/* Payments Table */}
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -1106,109 +1033,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
-            {activeTab === "messages" && (
-              <div className="animate-in fade-in duration-500 flex flex-col h-[700px] border border-gray-100 rounded-[32px] overflow-hidden bg-white shadow-xl shadow-blue-100/20">
-                <div className="flex-1 flex flex-col md:flex-row divide-x divide-gray-100">
-                  {/* Chat List */}
-                  <div className="w-full md:w-80 flex flex-col bg-gray-50/10">
-                    <div className="p-6 border-b border-gray-100 bg-white">
-                       <h3 className="text-lg font-black text-gray-900 mb-4">Inquiries</h3>
-                       <div className="relative">
-                          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                          <input 
-                            type="text" 
-                            placeholder="Find conversations..." 
-                            className="w-full pl-10 pr-4 py-2 bg-gray-50 border-none rounded-xl text-sm outline-none placeholder:text-gray-400 font-medium focus:ring-2 focus:ring-blue-100"
-                          />
-                       </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto custom-scrollbar">
-                       {groupedThreads.length === 0 ? (
-                         <div className="p-10 text-center space-y-2 opacity-50">
-                            <MessageSquare className="mx-auto text-gray-300" size={32} />
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">No Messages Yet</p>
-                         </div>
-                       ) : (
-                        <div className="p-3 space-y-1">
-                          {groupedThreads.map((thread) => (
-                            <div 
-                              key={thread.id} 
-                              onClick={() => setSelectedThreadId(thread.id)}
-                              className={`p-4 rounded-2xl cursor-pointer transition-all duration-300 ${selectedThreadId === thread.id || (!selectedThreadId && thread.id === groupedThreads[0]?.id) ? "bg-white shadow-lg shadow-blue-100/50 border border-blue-50" : "hover:bg-white/50"}`}
-                            >
-                               <div className="flex justify-between items-start mb-1">
-                                  <p className={`text-sm font-black ${selectedThreadId === thread.id ? "text-blue-600" : "text-gray-900"}`}>{thread.name}</p>
-                                  <span className="text-[9px] text-gray-400 font-bold">{new Date(thread.time).toLocaleDateString()}</span>
-                               </div>
-                               <p className="text-xs text-gray-500 truncate font-medium">{thread.lastMessage}</p>
-                            </div>
-                          ))}
-                        </div>
-                       )}
-                    </div>
-                  </div>
-
-                  {/* Chat Area */}
-                  <div className="flex-1 flex flex-col bg-white">
-                     {activeThread ? (
-                       <>
-                        <div className="p-6 bg-white border-b border-gray-100 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-sm uppercase">
-                                {activeThread.name[0]}
-                              </div>
-                              <div>
-                                <h4 className="text-sm font-black text-gray-900">{activeThread.name}</h4>
-                                <p className="text-[10px] font-bold text-green-500 uppercase tracking-widest">Active Discussion</p>
-                              </div>
-                            </div>
-                        </div>
-                        
-                        <div className="flex-1 p-8 space-y-6 overflow-y-auto bg-gray-50/30 custom-scrollbar">
-                            {activeThread.messages.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((msg: any, idx: number) => (
-                              <div key={idx} className={`flex ${msg.sender?.role === 'admin' ? "justify-end" : "justify-start"}`}>
-                                <div className={`max-w-[80%] p-4 rounded-2xl text-sm ${msg.sender?.role === 'admin' ? "bg-blue-600 text-white shadow-lg shadow-blue-100 rounded-tr-none" : "bg-white text-gray-700 shadow-sm border border-gray-100 rounded-tl-none font-medium"}`}>
-                                  {msg.content}
-                                  <p className={`text-[9px] mt-2 opacity-60 font-bold uppercase ${msg.sender?.role === 'admin' ? "text-blue-50" : "text-gray-400"}`}>
-                                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                        </div>
-
-                        <div className="p-6 bg-white border-t border-gray-100">
-                            <div className="relative flex items-center gap-3">
-                              <input 
-                                type="text" 
-                                value={adminReply}
-                                onChange={(e) => setAdminReply(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && handleSendReply()}
-                                placeholder="Type your response..." 
-                                className="flex-1 pl-6 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm outline-none font-medium focus:ring-2 focus:ring-blue-100"
-                              />
-                              <button 
-                                onClick={handleSendReply}
-                                className="p-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all hover:scale-110 active:scale-95"
-                              >
-                                <Send size={18} />
-                              </button>
-                            </div>
-                        </div>
-                       </>
-                     ) : (
-                       <div className="flex-1 flex flex-col items-center justify-center text-center p-10 opacity-30">
-                          <MessageSquare size={64} className="text-gray-300 mb-4" />
-                          <h4 className="text-xl font-black text-gray-900">Select a conversation</h4>
-                          <p className="text-sm font-medium text-gray-500">Choose a query from the list to start replying</p>
-                       </div>
-                     )}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
-
         </div>
       </div>
 
@@ -1429,7 +1254,7 @@ export default function AdminDashboard() {
                               PAN Number
                             </label>
                             <p className="text-gray-900 font-medium font-mono">
-                               {userDetailsModal.user.kycDetails.pan}
+                              {userDetailsModal.user.kycDetails.pan}
                             </p>
                           </div>
                         )}
@@ -1462,7 +1287,10 @@ export default function AdminDashboard() {
                           <div className="mt-6">
                             <h5 className="text-md font-bold text-gray-900 mb-3">
                               KYC Documents (
-                               {userDetailsModal.user.kycDetails.documents.length}
+                              {
+                                userDetailsModal.user.kycDetails.documents
+                                  .length
+                              }
                               )
                             </h5>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

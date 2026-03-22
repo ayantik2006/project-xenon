@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
         await dbConnect();
 
         // Check if user exists by email or googleId
-        const user = await User.findOne({
+        let user = await User.findOne({
             $or: [{ email: googleUser.email }, { googleId: googleUser.id }]
         });
 

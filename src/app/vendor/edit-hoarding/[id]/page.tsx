@@ -250,8 +250,8 @@ export default function EditHoardingPage() {
         shouldDirty: true,
       });
     }
-    setValue("latitude", location.lat, { shouldValidate: true, shouldDirty: true });
-    setValue("longitude", location.lng, { shouldValidate: true, shouldDirty: true });
+    setValue("latitude", location.lat, { shouldValidate: true });
+    setValue("longitude", location.lng, { shouldValidate: true });
   };
 
   const onSubmit = async (data: HoardingInput) => {

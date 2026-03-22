@@ -31,7 +31,7 @@ export async function GET(req: Request) {
         const status = searchParams.get('status');
         const city = searchParams.get('city');
 
-        const query: any = {};
+        let query: any = {};
         if (status) query.status = status;
         if (city) query['location.city'] = { $regex: new RegExp(city, 'i') };
 
