@@ -1,0 +1,16 @@
+src/app/api/admin/messages/route.ts(16,39): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/api/admin/messages/route.ts(50,39): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/api/buyer/wishlist/route.ts(16,39): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/api/buyer/wishlist/route.ts(41,39): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/api/buyer/wishlist/route.ts(86,39): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/api/messages/route.ts(16,39): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/api/messages/route.ts(49,39): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/vendor/dashboard/page.tsx(230,24): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/app/vendor/dashboard/page.tsx(247,20): error TS7006: Parameter 'prev' implicitly has an 'any' type.

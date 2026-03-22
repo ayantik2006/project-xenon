@@ -411,6 +411,7 @@ export default function ContactPage() {
                 <input
                   type="text"
                   name="name"
+                  
                   value={formData.name}
                   onChange={handleChange}
                   required
@@ -445,7 +446,7 @@ export default function ContactPage() {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-[#2563eb] outline-none transition-all font-medium text-slate-900 placeholder:text-slate-400"
+                  className="w-full px-5 py-4 bg-slate-50 text-black border border-slate-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-[#2563eb] outline-none transition-all font-medium text-slate-900 placeholder:text-slate-400"
                   placeholder="+91 98765 43210"
                 />
               </div>
