@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { User, Menu, X } from "lucide-react";
+import { User, Menu, X, LayoutDashboard } from "lucide-react";
 import AuthModal from "./AuthModal";
 import { checkAuth, logout } from "@/lib/fetchWithAuth";
 
@@ -72,6 +72,17 @@ export default function Navbar() {
                 <div className="hidden min-[731px]:flex items-center gap-2 h-full">
                   {user ? (
                     <div className="flex items-center gap-2">
+                      <Link
+                        href={`/${user.role}/dashboard`}
+                        className="flex items-center gap-2 rounded-lg py-2 px-2 hover:bg-blue-100 transition-colors"
+                      >
+                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-200 text-blue-700">
+                          <LayoutDashboard size={18} />
+                        </div>
+                        <span className="hidden sm:inline text-xs uppercase tracking-widest font-black">
+                          Dashboard
+                        </span>
+                      </Link>
                       <Link
                         href="/profile"
                         className="flex items-center gap-2 rounded-lg py-2 px-2 hover:bg-blue-100 transition-colors"
@@ -153,6 +164,14 @@ export default function Navbar() {
                 <div className="mt-4 pt-4 border-t border-blue-100 space-y-2">
                   {user ? (
                     <>
+                      <Link
+                        href={`/${user.role}/dashboard`}
+                        onClick={() => setIsMenuOpen(false)}
+                        className="flex items-center gap-4 px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-700 hover:bg-blue-100 rounded-lg transition-all"
+                      >
+                        <LayoutDashboard size={18} className="text-blue-500" />
+                        Dashboard
+                      </Link>
                       <Link
                         href="/profile"
                         onClick={() => setIsMenuOpen(false)}

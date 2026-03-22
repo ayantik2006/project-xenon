@@ -27,7 +27,6 @@ export async function POST(req: Request) {
 
     await dbConnect();
 
-    // Fetch hoarding to get actual price
     const hoarding = await Hoarding.findById(hoardingId);
     if (!hoarding) {
       return NextResponse.json({ error: "Hoarding not found" }, { status: 404 });
@@ -37,7 +36,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Hoarding is not available for booking" }, { status: 400 });
     }
 
-    // Calculate amount on server side (SECURE)
     const start = new Date(startDate);
     const end = new Date(endDate);
     const diffTime = Math.abs(end.getTime() - start.getTime());
@@ -47,10 +45,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid date range" }, { status: 400 });
     }
 
-    // Calculate amount based on actual hoarding price from database
-    const amount = Math.ceil((hoarding.pricePerMonth / 30) * diffDays);
+    const vendorBaseAmount = Math.ceil((hoarding.pricePerMonth / 30) * diffDays);
+    const commission = vendorBaseAmount * 0.20;
+    const subtotal = vendorBaseAmount + commission;
+    const gatewayCharges = subtotal * 0.025;
+    const gst = subtotal * 0.025;
+    const amount = Math.ceil(subtotal + gatewayCharges + gst);
 
-    // Validate minimum booking amount
     const minAmount = hoarding.minimumBookingAmount || 0;
     if (amount < minAmount) {
       return NextResponse.json(
@@ -59,22 +60,22 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create Razorpay Order
     const options = {
-      amount: Math.round(amount * 100), // amount in paisa
+      amount: Math.round(amount * 100), 
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
     };
 
     const order = await razorpay.orders.create(options);
 
-    // Create minimal booking record
     const booking = await Booking.create({
       hoarding: hoardingId,
       user: payload.userId,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
       totalAmount: amount,
+      platformFee: Math.ceil(commission + gatewayCharges + gst),
+      vendorAmount: vendorBaseAmount,
       status: 'pending',
       orderId: order.id
     });
