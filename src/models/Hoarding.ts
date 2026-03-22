@@ -6,7 +6,7 @@ export interface IHoarding extends Document {
   location: {
     address: string;
     city: string;
-    area: string; // New area field
+    area: string;
     state: string;
     zipCode?: string;
     coordinates?: {
@@ -19,13 +19,17 @@ export interface IHoarding extends Document {
     height: number;
   };
   type: string;
-  lightingType: 'Lit' | 'Non-Lit' | 'Front Lit' | 'Back Lit'; // New lighting type
+  lightingType: 'Lit' | 'Non-Lit' | 'Front Lit' | 'Back Lit';
   pricePerMonth: number;
   minimumBookingAmount: number;
   images: string[];
   owner: mongoose.Types.ObjectId;
   status: 'pending' | 'approved' | 'rejected';
-  uniqueReach?: number; // Admin field for daily traffic/reach
+  uniqueReach?: number;
+  hoardingCode?: string;
+  trafficFrom?: string;
+  structureType?: string;
+  availabilityStatus?: string;
   availability: {
       blockedDates: Array<{ startDate: Date; endDate: Date; reason?: string }>;
   };
@@ -39,7 +43,7 @@ const HoardingSchema: Schema<IHoarding> = new Schema({
   location: {
     address: { type: String, required: true },
     city: { type: String, required: true, index: true },
-    area: { type: String, required: true }, // Added area
+    area: { type: String, required: true },
     state: { type: String, required: true },
     zipCode: { type: String },
     coordinates: {
@@ -69,9 +73,13 @@ const HoardingSchema: Schema<IHoarding> = new Schema({
   status: {  
     type: String, 
     enum: ['pending', 'approved', 'rejected'],
-    default: 'approved' // Auto-publish immediately as per requirement
+    default: 'approved'
   },
-  uniqueReach: { type: Number }, // Manually fed by admin
+  uniqueReach: { type: Number },
+  hoardingCode: { type: String },
+  trafficFrom: { type: String },
+  structureType: { type: String },
+  availabilityStatus: { type: String, default: 'Immediately' },
   availability: {
      blockedDates: [{
          startDate: { type: Date },
@@ -83,10 +91,8 @@ const HoardingSchema: Schema<IHoarding> = new Schema({
   timestamps: true
 });
 
-// Create index for location-based text search if needed later
 HoardingSchema.index({ 'location.city': 'text', 'location.address': 'text', name: 'text' });
 
-// Prevent Mongoose model recompilation in development
 if (process.env.NODE_ENV === 'development') {
     delete mongoose.models.Hoarding;
 }

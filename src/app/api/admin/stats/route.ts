@@ -4,7 +4,7 @@ import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
 import Hoarding from '@/models/Hoarding';
 import Booking from '@/models/Booking';
-import { verifyToken } from '@/lib/jwt';
+import { verifyAccessToken } from '@/lib/jwt';
 
 // GET admin dashboard stats
 export async function GET(req: Request) {
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const payload = verifyToken(token);
+        const payload = verifyAccessToken(token);
         if (!payload) {
             return NextResponse.json({ error: "Invalid token" }, { status: 401 });
         }
@@ -28,7 +28,7 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Access denied. Admin only." }, { status: 403 });
         }
 
-        // Get statistics
+        // Get basic counts
         const totalUsers = await User.countDocuments();
         const totalVendors = await User.countDocuments({ role: 'vendor' });
         const totalBuyers = await User.countDocuments({ role: 'buyer' });
@@ -39,7 +39,11 @@ export async function GET(req: Request) {
         const pendingHoardings = await Hoarding.countDocuments({ status: 'pending' });
 
         const totalBookings = await Booking.countDocuments();
-        const activeBookings = await Booking.countDocuments({ paymentStatus: 'paid' });
+        // Assume confirmed bookings are those with a payment status or just use 'confirmed' status
+        const confirmedBookings = await Booking.find({ status: 'confirmed' });
+        
+        const totalGMV = confirmedBookings.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
+        const platformRevenue = confirmedBookings.reduce((acc, curr) => acc + (curr.platformFee || 0), 0);
 
         // Get recent activities
         const recentUsers = await User.find()
@@ -49,6 +53,12 @@ export async function GET(req: Request) {
 
         const recentHoardings = await Hoarding.find()
             .populate('owner', 'name email')
+            .sort({ createdAt: -1 })
+            .limit(5);
+
+        const recentBookings = await Booking.find()
+            .populate('user', 'name')
+            .populate('hoarding', 'name')
             .sort({ createdAt: -1 })
             .limit(5);
 
@@ -67,11 +77,14 @@ export async function GET(req: Request) {
                 },
                 bookings: {
                     total: totalBookings,
-                    active: activeBookings
+                    confirmed: confirmedBookings.length,
+                    totalGMV,
+                    platformRevenue
                 }
             },
             recentUsers,
-            recentHoardings
+            recentHoardings,
+            recentBookings
         }, { status: 200 });
 
     } catch (error: any) {
