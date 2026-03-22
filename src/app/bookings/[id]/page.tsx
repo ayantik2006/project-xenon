@@ -9,6 +9,14 @@ import {
   ShieldCheck,
   Loader2,
   CheckCircle,
+  Clock,
+  Info,
+  Share2,
+  Heart,
+  TrendingUp,
+  Maximize2,
+  Zap,
+  MessageSquare,
 } from "lucide-react";
 import Script from "next/script";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
@@ -22,7 +30,7 @@ declare global {
 export default function BookingPage() {
   const params = useParams();
   const router = useRouter();
-  const { id } = params; // hoardingId
+  const { id } = params;
 
   const [user, setUser] = useState<any>(null);
   const [hoarding, setHoarding] = useState<any>(null);
@@ -32,57 +40,17 @@ export default function BookingPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
-  // Check authentication on load - redirect if not authenticated
   useEffect(() => {
     const checkUser = async () => {
       const res = await fetchWithAuth("/api/auth/me");
       if (!res.ok) {
-        // Not authenticated, redirect to home
         router.push("/");
         return;
       }
-
       const data = await res.json();
-      const userData = data.user;
-
-      // Check email verification
-      if (!userData.emailVerified) {
-        alert("Please verify your email first");
-        router.push("/profile");
-        return;
-      }
-
-      // Check KYC status
-      if (userData.kycStatus === "not_submitted") {
-        alert("Please complete KYC verification from your profile");
-        router.push("/profile");
-        return;
-      }
-
-      if (userData.kycStatus === "pending") {
-        alert("Your KYC is under review. Please wait for admin approval");
-        router.push("/");
-        return;
-      }
-
-      if (userData.kycStatus === "rejected") {
-        alert("Your KYC was rejected. Please update from your profile");
-        router.push("/profile");
-        return;
-      }
-
-      if (
-        userData.kycStatus !== "approved" &&
-        userData.kycStatus !== "verified"
-      ) {
-        alert("KYC verification required to book");
-        router.push("/");
-        return;
-      }
-
-      // All checks passed
-      setUser(userData);
+      setUser(data.user);
       setAuthChecking(false);
     };
     checkUser();
@@ -102,274 +70,440 @@ export default function BookingPage() {
         setLoading(false);
       }
     };
-
     if (id) fetchHoarding();
   }, [id]);
 
+  // Pricing Logic
+  const calculatePricing = () => {
+    if (!hoarding)
+      return { base: 0, commission: 0, gateway: 0, gst: 0, total: 0 };
+
+    const basePrice = hoarding.pricePerMonth;
+    // Markup/Commission (e.g. 20%)
+    const commission = basePrice * 0.2;
+    const subtotal = basePrice + commission;
+    // Razorpay 2.5%
+    const gatewayCharges = subtotal * 0.025;
+    // GST 2.5% (as requested by user)
+    const gst = subtotal * 0.025;
+
+    const total = subtotal + gatewayCharges + gst;
+
+    return {
+      base: basePrice,
+      commission,
+      gateway: gatewayCharges,
+      gst,
+      total: Math.round(total),
+    };
+  };
+
+  const pricing = calculatePricing();
+
   const handlePayment = async () => {
     if (!startDate || !endDate) {
-      setError("Please select dates");
+      setError("Please select campaign dates");
       return;
     }
-
-    // Check if user is logged in
-    if (!user) {
-      setError("Please go back and login first");
-      setTimeout(() => router.push("/"), 2000);
-      return;
-    }
-
-    // Check email verification
-    if (!user.emailVerified) {
-      setError("Please verify your email first");
-      return;
-    }
-
-    // Check KYC status
-    if (user.kycStatus === "not_submitted") {
-      setError("Please complete KYC verification from your profile");
-      setTimeout(() => router.push("/profile"), 2000);
-      return;
-    }
-
-    if (user.kycStatus === "pending") {
-      setError("Your KYC is under review. Please wait for admin approval");
-      return;
-    }
-
-    if (user.kycStatus === "rejected") {
-      setError("Your KYC was rejected. Please update from your profile");
-      setTimeout(() => router.push("/profile"), 2000);
-      return;
-    }
-
-    if (user.kycStatus !== "approved" && user.kycStatus !== "verified") {
-      setError("KYC verification required to book");
-      return;
-    }
-
     setProcessing(true);
     setError("");
 
     try {
-      // 1. Create Order (amount calculated securely on backend)
       const res = await fetchWithAuth("/api/bookings/checkout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          hoardingId: id,
-          startDate,
-          endDate,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hoardingId: id, startDate, endDate }),
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error);
-      }
+      if (!res.ok) throw new Error(data.error);
 
-      // 2. Open Razorpay
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: data.amount,
         currency: data.currency,
         name: "HoardSpace",
-        description: `Booking for ${hoarding.name}`,
+        description: `Premium Booking: ${hoarding.name}`,
         order_id: data.orderId,
         handler: async function (response: any) {
-          // 3. Verify Payment
           try {
             const verifyRes = await fetch("/api/bookings/verify", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              }),
+              body: JSON.stringify(response),
             });
-
             const verifyData = await verifyRes.json();
-            if (verifyData.success) {
-              router.push("/bookings/success");
-            } else {
-              setError("Payment verification failed");
-              setProcessing(false);
-            }
+            if (verifyData.success) router.push("/bookings/success");
+            else setError("Payment verification failed");
           } catch (error) {
             setError("Payment verification failed");
+          } finally {
             setProcessing(false);
           }
         },
-        modal: {
-          ondismiss: function () {
-            // User closed the payment modal
-            setProcessing(false);
-            setError("Payment cancelled");
-          },
-        },
-        prefill: {
-          name: user?.name || "Customer",
-          email: user?.email || "",
-          contact: user?.phone || "",
-        },
-        theme: {
-          color: "#2563eb",
-        },
+        prefill: { name: user?.name, email: user?.email },
+        theme: { color: "#2563eb" },
       };
 
-      const paymentObject = new window.Razorpay(options);
-      paymentObject.open();
+      const rzp = new window.Razorpay(options);
+      rzp.open();
     } catch (err: any) {
       setError(err.message || "Payment failed");
       setProcessing(false);
     }
   };
 
-  // Show loading while checking authentication
-  if (authChecking) {
+  const addToWishlist = async () => {
+    setError("");
+    setSuccessMsg("");
+    try {
+      const res = await fetchWithAuth("/api/buyer/wishlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hoardingId: id }),
+      });
+      if (res.ok) {
+        setSuccessMsg("Added to your wishlist!");
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to add to wishlist");
+      }
+    } catch (error) {
+      setError("Failed to add to wishlist");
+    }
+  };
+
+  const enquireNow = async () => {
+    setError("");
+    setSuccessMsg("");
+    try {
+      const res = await fetchWithAuth("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user?._id,
+          content: `Inquiry regarding hoarding: ${hoarding.name} (ID: ${hoarding.hoardingCode})`,
+          subject: "Hoarding Inquiry",
+          type: "query",
+        }),
+      });
+      if (res.ok) {
+        setSuccessMsg("Inquiry sent to admin!");
+      } else {
+        setError("Failed to send inquiry");
+      }
+    } catch (error) {
+      setError("Failed to send inquiry");
+    }
+  };
+
+  if (authChecking || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#2563eb]" size={40} />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="animate-spin text-blue-600" size={40} />
       </div>
     );
   }
 
-  if (loading)
+  if (!hoarding)
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#2563eb]" />
+      <div className="p-20 text-center font-bold text-gray-400">
+        Hoarding data unavailable
       </div>
     );
-  if (!hoarding)
-    return <div className="p-10 text-center">Hoarding not found</div>;
 
   return (
-    <>
-      <Script
-        id="razorpay-checkout-js"
-        src="https://checkout.razorpay.com/v1/checkout.js"
-      />
-      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Left: Hoarding Details */}
-          <div className="md:col-span-2 space-y-6">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                {hoarding.name}
-              </h1>
-              <div className="flex items-center text-gray-500 mb-4">
-                <MapPin size={16} className="mr-1" />
-                {hoarding.location.address}, {hoarding.location.city}
-              </div>
+    <div className="min-h-screen bg-[#F8F9FD] py-12 px-6">
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
 
-              <div className="aspect-video bg-gray-200 rounded-xl overflow-hidden mb-6">
-                {hoarding.images[0] && (
-                  <img
-                    src={hoarding.images[0]}
-                    className="w-full h-full object-cover"
-                  />
-                )}
-              </div>
+      <div className="max-w-7xl mx-auto space-y-10">
+        {/* Breadcrumbs */}
+        <nav className="text-xs font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
+          <span>Home</span> <span className="text-gray-200">/</span>
+          <span>{hoarding.location.city}</span>{" "}
+          <span className="text-gray-200">/</span>
+          <span className="text-blue-600">{hoarding.name}</span>
+        </nav>
 
-              <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl">
-                <div>
-                  <span className="text-xs text-gray-400 uppercase font-bold">
-                    Type
-                  </span>
-                  <p className="font-semibold text-gray-800">{hoarding.type}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-gray-400 uppercase font-bold">
-                    Dimensions
-                  </span>
-                  <p className="font-semibold text-gray-800">
-                    {hoarding.dimensions.width}' x {hoarding.dimensions.height}'
-                  </p>
-                </div>
-                <div>
-                  <span className="text-xs text-gray-400 uppercase font-bold">
-                    Monthly Price
-                  </span>
-                  <p className="font-semibold text-gray-800">
-                    ₹{hoarding.pricePerMonth.toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-xs text-gray-400 uppercase font-bold">
-                    Min Booking
-                  </span>
-                  <p className="font-semibold text-gray-800">
-                    ₹{hoarding.minimumBookingAmount?.toLocaleString() || 0}
+        {/* Title Section */}
+        <div className="space-y-2">
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight">
+            {hoarding.name}
+          </h1>
+          <div className="flex items-center gap-2 text-gray-500 font-medium">
+            <MapPin size={18} className="text-blue-600" />
+            <span>
+              {hoarding.location.address}, {hoarding.location.city},{" "}
+              {hoarding.location.state}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          {/* Main Content (Images & Details) */}
+          <div className="lg:col-span-2 space-y-10">
+            {/* Image Gallery */}
+            <div className="bg-white rounded-[40px] overflow-hidden shadow-2xl shadow-blue-100 border border-gray-100 group">
+              <div className="aspect-[16/9] relative">
+                <img
+                  src={hoarding.images[0]}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
+                  alt={hoarding.name}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+              </div>
+            </div>
+
+            {/* Property Details Table */}
+            <div className="bg-white rounded-[40px] p-10 border border-gray-100 shadow-sm space-y-8">
+              <h3 className="text-2xl font-black text-gray-900">
+                Property Details
+              </h3>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-10 gap-x-6">
+                {[
+                  {
+                    label: "Property Code",
+                    value: hoarding.hoardingCode || "RHU-PAT-001",
+                  },
+                  { label: "Property Type", value: hoarding.type },
+                  { label: "Lit Type", value: hoarding.lightingType },
+                  {
+                    label: "Front Lit",
+                    value: hoarding.lightingType === "Front Lit" ? "Yes" : "No",
+                  },
+                  {
+                    label: "Traffic From",
+                    value: hoarding.trafficFrom || "Main Road",
+                  },
+                  {
+                    label: "Size (WxH)",
+                    value: `${hoarding.dimensions.width} x ${hoarding.dimensions.height} Feet`,
+                  },
+                  {
+                    label: "Square Feet",
+                    value: `${
+                      hoarding.dimensions.width * hoarding.dimensions.height
+                    } sq.ft`,
+                  },
+                  {
+                    label: "Available",
+                    value: hoarding.availabilityStatus || "Immediately",
+                    color: "text-green-600",
+                  },
+                  {
+                    label: "Structure Type",
+                    value: hoarding.structureType || "Hoarding",
+                  },
+                  {
+                    label: "Traffic Data",
+                    value: `${
+                      hoarding.uniqueReach?.toLocaleString() || "0"
+                    } unique reach/week`,
+                  },
+                ].map((item, i) => (
+                  <div key={i} className="space-y-1">
+                    <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider font-bold italic">
+                      {item.label}
+                    </p>
+                    <p
+                      className={`font-black text-gray-900 ${item.color || ""}`}
+                    >
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="bg-white rounded-[40px] p-10 border border-gray-100 shadow-sm space-y-6">
+              <h3 className="text-2xl font-black text-gray-900">Description</h3>
+              <p className="text-gray-500 leading-relaxed font-medium">
+                {hoarding.description ||
+                  "This premium hoarding space offers maximum visibility at a high-traffic location. Ideal for brands looking to make a massive impact in the city center. Front-lit for high night-time visibility."}
+              </p>
+            </div>
+
+            {/* Location Map Placeholder */}
+            <div className="bg-white rounded-[40px] p-10 border border-gray-100 shadow-sm space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-black text-gray-900">
+                  Location Map
+                </h3>
+                <button className="text-blue-600 font-bold text-sm underline flex items-center gap-1">
+                  <Maximize2 size={14} /> Open in Maps
+                </button>
+              </div>
+              <div className="aspect-[21/9] bg-blue-50 rounded-[30px] flex items-center justify-center border-2 border-dashed border-blue-200">
+                <div className="flex flex-col items-center gap-2 text-blue-400">
+                  <MapPin size={40} />
+                  <p className="text-sm font-bold">
+                    Google Maps Integrated View
                   </p>
                 </div>
               </div>
             </div>
+
+            <button className="w-full py-6 text-blue-600 font-black tracking-widest uppercase text-sm border-2 border-blue-600 rounded-[30px] hover:bg-blue-600 hover:text-white transition-all shadow-xl shadow-blue-50/50">
+              View Similar Media
+            </button>
           </div>
 
-          {/* Right: Booking Form */}
-          <div className="md:col-span-1">
-            <div className="bg-white rounded-2xl p-6 shadow-lg shadow-blue-100 border border-blue-50 sticky top-24">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">
-                Book Dates
-              </h3>
-
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full border rounded-lg p-2 text-sm"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full border rounded-lg p-2 text-sm"
-                    min={startDate}
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
+          {/* Right Sidebar (Booking & Pricing) */}
+          <div className="space-y-8">
+            {/* Date Selection Card */}
+            <div className="bg-white rounded-[40px] p-10 shadow-2xl shadow-blue-100 border border-gray-100 sticky top-10 space-y-8">
+              <div className="space-y-1">
+                <h3 className="text-xl font-black text-gray-900">
+                  Select Campaign Dates
+                </h3>
+                <p className="text-xs text-gray-400 font-medium">
+                  Minimum booking duration: 1 month
+                </p>
               </div>
 
-              {error && (
-                <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg mb-4">
-                  {error}
+              <div className="space-y-4">
+                <div className="group">
+                  <label className="text-[10px] font-black uppercase text-gray-400 mb-2 block">
+                    Campaign Start
+                  </label>
+                  <div className="relative">
+                    <Calendar
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600"
+                      size={18}
+                    />
+                    <input
+                      type="date"
+                      className="w-full pl-12 pr-6 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/10 font-bold text-gray-700"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
+                  </div>
                 </div>
-              )}
 
-              <div className="bg-blue-50 p-3 rounded-lg flex items-center gap-2 mb-6">
-                <ShieldCheck size={16} className="text-[#2563eb]" />
-                <span className="text-xs text-indigo-800 font-medium">
-                  Secure Payment by Razorpay
-                </span>
+                <div className="group">
+                  <label className="text-[10px] font-black uppercase text-gray-400 mb-2 block">
+                    Campaign End
+                  </label>
+                  <div className="relative">
+                    <Calendar
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600"
+                      size={18}
+                    />
+                    <input
+                      type="date"
+                      className="w-full pl-12 pr-6 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/10 font-bold text-gray-700"
+                      min={startDate}
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
 
               <button
                 onClick={handlePayment}
                 disabled={processing}
-                className="w-full bg-[#2563eb] text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition"
+                className="w-full bg-blue-600 text-white py-5 rounded-[22px] font-black text-lg shadow-xl shadow-blue-100 hover:scale-[1.02] active:scale-95 transition-all"
               >
                 {processing ? (
                   <Loader2 className="animate-spin mx-auto" />
                 ) : (
-                  "Proceed to Pay"
+                  "Book Now"
                 )}
               </button>
+
+              {/* Pricing Details Card */}
+              <div className="bg-gray-50/50 rounded-[30px] p-8 space-y-6">
+                <h4 className="text-sm font-black text-gray-900 uppercase">
+                  Pricing Details
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 font-medium">
+                      Base Cost / Month
+                    </span>
+                    <span className="text-gray-900 font-black tracking-tight">
+                      ₹{pricing.base.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 font-medium">
+                      Markup & Commission
+                    </span>
+                    <span className="text-gray-900 font-black tracking-tight">
+                      ₹{pricing.commission.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 font-medium font-bold">
+                      Subtotal
+                    </span>
+                    <span className="text-gray-900 font-black tracking-tight border-b-2 border-gray-200">
+                      ₹
+                      {(pricing.base + pricing.commission).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm pt-2">
+                    <span className="text-gray-500 font-medium">
+                      Gateway Charges (2.5%)
+                    </span>
+                    <span className="text-gray-900 font-black tracking-tight">
+                      ₹{pricing.gateway.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 font-medium">GST (2.5%)</span>
+                    <span className="text-gray-900 font-black tracking-tight">
+                      ₹{pricing.gst.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="pt-4 mt-4 border-t border-gray-200">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-black text-blue-600">
+                        Total Price
+                      </span>
+                      <span className="text-2xl font-black text-blue-600">
+                        ₹{pricing.total.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-6">
+                  <button
+                    onClick={addToWishlist}
+                    className="w-full flex items-center justify-center gap-3 py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all transition-colors duration-300"
+                  >
+                    <Heart size={16} /> Add to Wishlist
+                  </button>
+                  <button
+                    onClick={enquireNow}
+                    className="w-full flex items-center justify-center gap-3 py-4 bg-white border border-gray-200 text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:border-blue-600 hover:text-blue-600 transition-all"
+                  >
+                    <MessageSquare size={16} /> Enquire Now
+                  </button>
+                  <button className="w-full flex items-center justify-center gap-3 py-4 text-gray-400 font-bold text-xs uppercase hover:text-gray-600 transition-colors">
+                    <Share2 size={14} /> Share Listing
+                  </button>
+                </div>
+              </div>
+
+              {(error || successMsg) && (
+                <div
+                  className={`p-4 text-xs font-bold rounded-2xl border animate-in fade-in slide-in-from-top-2 ${
+                    error
+                      ? "bg-red-50 text-red-600 border-red-100"
+                      : "bg-green-50 text-green-600 border-green-100"
+                  }`}
+                >
+                  {error ? `Error: ${error}` : successMsg}
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
