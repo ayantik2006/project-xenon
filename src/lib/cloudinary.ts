@@ -1,25 +1,17 @@
 import { v2 as cloudinary } from "cloudinary";
-import fs from "fs";
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+const apiKey = process.env.CLOUDINARY_API_KEY;
+const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
-export const uploadInCloudinary = async (localPath:any) => {
-  try {
-    if (!localPath) return null;
+if (cloudName && apiKey && apiSecret) {
+  cloudinary.config({
+    cloud_name: cloudName,
+    api_key: apiKey,
+    api_secret: apiSecret,
+  });
+} else {
+  console.warn("Cloudinary credentials are not fully configured.");
+}
 
-    const result = await cloudinary.uploader.upload(localPath, {
-      resource_type: "auto",
-    });
-
-    fs.unlinkSync(localPath); 
-    return result.secure_url;
-
-  } catch (error) {
-    if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
-    throw error;
-  }
-};
+export default cloudinary;

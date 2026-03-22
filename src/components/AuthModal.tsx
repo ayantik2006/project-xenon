@@ -380,7 +380,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({ phone, otp: data.otp }),
+      body: JSON.stringify({ phone, otp: data.otp, context: "kyc" }),
       });
       const result: AuthApiResponse = await res.json();
       if (!res.ok) throw new Error(result.error || "Phone verification failed");

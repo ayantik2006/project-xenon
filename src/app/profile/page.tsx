@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -31,49 +38,87 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // OTP Verification State
-  const [showOtp, setShowOtp] = useState(false);
-  const [otp, setOtp] = useState("");
-  const [phoneToVerify, setPhoneToVerify] = useState("");
-  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [phoneInput, setPhoneInput] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [phoneStatus, setPhoneStatus] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpRecipient, setOtpRecipient] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [sendingPhoneOtp, setSendingPhoneOtp] = useState(false);
+  const [verifyingPhoneOtp, setVerifyingPhoneOtp] = useState(false);
+  const PHONE_OTP_COOLDOWN_SECONDS = 60;
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const kycForm = useForm<KYCInput>({
     resolver: zodResolver(kycSchema),
   });
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetchWithAuth("/api/auth/me");
+  const loadUser = useCallback(async () => {
+    try {
+      const res = await fetchWithAuth("/api/auth/me");
 
         if (res.ok) {
           const data = await res.json();
           setUser(data.user);
-          // Pre-fill KYC form if data exists (e.g. from rejected attempt)
-          if (data.user.kycDetails) {
-            kycForm.reset({
-              phone: data.user.phone, // Phone is top level
-              address: data.user.kycDetails.address,
-              companyName: data.user.kycDetails.companyName,
-              gstin: data.user.kycDetails.gstin,
-              pan: data.user.kycDetails.pan || "",
-              aadhaar: data.user.kycDetails.aadhaar || "",
-            });
-          } else if (data.user.phone) {
-            kycForm.setValue("phone", data.user.phone);
-          }
+          setPhotoPreview(data.user.image || null);
+          setPhotoFile(null);
+          setPhotoStatus(null);
+          setPhoneInput(data.user.phone || "");
+        const kycDefaults = {
+          phone: data.user.phone || "",
+          companyName: "",
+          gstin: "",
+          pan: "",
+          aadhaar: "",
+          address: "",
+          documents: [],
+        };
+
+        if (data.user.kycDetails) {
+          kycForm.reset({
+            ...kycDefaults,
+            companyName: data.user.kycDetails.companyName || "",
+            gstin: data.user.kycDetails.gstin || "",
+            pan: data.user.kycDetails.pan || "",
+            aadhaar: data.user.kycDetails.aadhaar || "",
+            address: data.user.kycDetails.address || "",
+            documents: data.user.kycDetails.documents || [],
+          });
         } else {
-          router.push("/");
+          kycForm.reset(kycDefaults);
         }
-      } catch (e) {
-        console.error("Failed to fetch user", e);
+      } else {
         router.push("/");
-      } finally {
-        setLoading(false);
+      }
+    } catch (e) {
+      console.error("Failed to fetch user", e);
+      router.push("/");
+    } finally {
+      setLoading(false);
+    }
+  }, [router, kycForm]);
+
+  useEffect(() => {
+    loadUser();
+  }, [loadUser]);
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview && photoPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(photoPreview);
       }
     };
-    fetchUser();
-  }, [router, kycForm]);
+  }, [photoPreview]);
 
   const handleLogout = async () => {
     try {
@@ -87,73 +132,212 @@ export default function ProfilePage() {
     window.location.href = "/";
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
+  const handleSendPhoneOtp = async (
+    event?: FormEvent<HTMLFormElement>,
+  ) => {
+    event?.preventDefault();
+    setPhoneStatus(null);
+    const trimmedPhone = phoneInput.trim();
+    if (!trimmedPhone) {
+      setPhoneStatus({
+        type: "error",
+        message: "Please enter a valid phone number.",
+      });
+      return;
+    }
+
+    setSendingPhoneOtp(true);
+    try {
+      const res = await fetchWithAuth("/api/auth/phone/send-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ phone: trimmedPhone }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPhoneStatus({
+          type: "error",
+          message: data.error || data.message || "Could not send OTP.",
+        });
+        if (data.resendAvailableIn) {
+          setResendCooldown(data.resendAvailableIn);
+        }
+        return;
+      }
+
+      setOtpSent(true);
+      setOtpRecipient(data.phone || trimmedPhone);
+      setResendCooldown(
+        data.resendAvailableIn ?? PHONE_OTP_COOLDOWN_SECONDS,
+      );
+      setPhoneStatus({
+        type: "success",
+        message: data.message || "OTP sent successfully.",
+      });
+    } catch (err: any) {
+      console.error("Send OTP failed", err);
+      setPhoneStatus({
+        type: "error",
+        message: err.message || "Failed to send OTP. Please try again.",
+      });
+    } finally {
+      setSendingPhoneOtp(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setVerifyingOtp(true);
-    setError("");
+    if (!otpCode.trim()) {
+      setPhoneStatus({
+        type: "error",
+        message: "Enter the 6-digit verification code.",
+      });
+      return;
+    }
+
+    setVerifyingPhoneOtp(true);
+    setPhoneStatus(null);
     try {
       const res = await fetchWithAuth("/api/auth/verify-phone", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ phone: phoneToVerify, otp }),
+        body: JSON.stringify({
+          phone: phoneInput.trim(),
+          otp: otpCode.trim(),
+          context: "profile",
+        }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Verification failed");
 
-      setSuccess("Phone Verified & KYC Submitted!");
-      setShowOtp(false);
-      // Refresh user
-      const meRes = await fetchWithAuth("/api/auth/me");
-      if (meRes.ok) {
-        const meData = await meRes.json();
-        setUser(meData.user);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Verification failed");
       }
+
+      setPhoneStatus({
+        type: "success",
+        message: data.message || "Phone verified successfully.",
+      });
+      setOtpSent(false);
+      setOtpCode("");
+      setResendCooldown(0);
+      setOtpRecipient("");
+      await loadUser();
     } catch (err: any) {
-      setError(err.message);
+      setPhoneStatus({
+        type: "error",
+        message: err.message || "Invalid verification code.",
+      });
     } finally {
-      setVerifyingOtp(false);
+      setVerifyingPhoneOtp(false);
+    }
+  };
+
+  const handlePhotoSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (photoPreview && photoPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(photoPreview);
+    }
+
+    setPhotoFile(file);
+    setPhotoStatus(null);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const handleUploadPhoto = async () => {
+    if (!photoFile) {
+      setPhotoStatus({
+        type: "error",
+        message: "Please select an image before uploading.",
+      });
+      return;
+    }
+
+    setPhotoStatus(null);
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append("photo", photoFile);
+
+      const res = await fetchWithAuth("/api/profile/upload-photo", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Upload failed.");
+      }
+
+      setPhotoStatus({
+        type: "success",
+        message: data.message || "Profile photo updated.",
+      });
+      setPhotoFile(null);
+      setPhotoPreview(data.imageUrl || photoPreview);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      await loadUser();
+    } catch (err: any) {
+      console.error("Upload error", err);
+      setPhotoStatus({
+        type: "error",
+        message: err.message || "Upload failed. Please try again.",
+      });
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
   const handleKYCSubmit = async (data: KYCInput) => {
     setError("");
     setSuccess("");
+    if (!user?.phone || !user?.isPhoneVerified) {
+      setError("Please verify your phone number before submitting KYC.");
+      return;
+    }
+
     setKycSubmitting(true);
     try {
+      const payload = {
+        ...data,
+        phone: user.phone,
+      };
       const res = await fetchWithAuth("/api/auth/kyc", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "KYC submission failed");
 
-      if (result.message.includes("verify phone")) {
-        setSuccess(
-          "Details recorded. Please enter the OTP sent to your phone.",
-        );
-        setPhoneToVerify(data.phone);
-        setShowOtp(true);
-        setOtp(""); // reset otp
-      } else {
-        setSuccess("KYC Details Submitted Successfully.");
-        // Refresh user data
-        const meRes = await fetchWithAuth("/api/auth/me");
-        if (meRes.ok) {
-          const meData = await meRes.json();
-          setUser(meData.user);
-        }
-      }
+      setSuccess(result.message || "KYC Details Submitted Successfully.");
+      await loadUser();
     } catch (err: any) {
       setError(err.message);
     } finally {
       setKycSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = window.setTimeout(() => {
+      setResendCooldown((current) => Math.max(0, current - 1));
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
 
   if (loading) {
     return (
@@ -375,7 +559,245 @@ export default function ProfilePage() {
                   </div>
                 )}
             </div>
+        </div>
+      </div>
+
+      {/* Profile Picture */}
+      {["buyer", "vendor"].includes(user.role) && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">
+                {user.role === "vendor"
+                  ? "Vendor Profile Picture"
+                  : "Buyer Profile Picture"}
+              </h2>
+              <p className="text-sm text-gray-500">
+                {user.role === "vendor"
+                  ? "Upload a brand or personal image so buyers feel confident booking from you."
+                  : "Upload a friendly face or brand avatar so vendors can recognize you while chatting."}
+              </p>
+            </div>
           </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="h-20 w-20 rounded-2xl border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center text-gray-400">
+              {photoPreview ? (
+                <img
+                  src={photoPreview}
+                  alt="Profile preview"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-sm font-semibold text-gray-500">
+                  No photo
+                </span>
+              )}
+            </div>
+            <div className="flex-1 space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 bg-white hover:border-[#2563eb] hover:text-[#2563eb] transition-colors"
+                >
+                  Choose file
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUploadPhoto}
+                  disabled={!photoFile || uploadingPhoto}
+                  className="px-4 py-2 rounded-lg bg-[#2563eb] text-white text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploadingPhoto ? "Uploading..." : "Upload photo"}
+                </button>
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={handlePhotoSelect}
+                />
+              </div>
+              <p className="text-xs text-gray-400">
+                Supported formats: JPG/PNG. Keep file size under 5MB.
+              </p>
+              <p className="text-xs text-gray-400">
+                Your photo is stored securely via Cloudinary and linked to your
+                buyer profile.
+              </p>
+              {photoStatus && (
+                <div
+                  className={`rounded-lg px-3 py-2 text-sm ${
+                    photoStatus.type === "success"
+                      ? "bg-green-50 text-green-700 border border-green-100"
+                      : "bg-red-50 text-red-700 border border-red-100"
+                  }`}
+                >
+                  {photoStatus.message}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+        {/* Phone Verification Section */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-50 p-2 rounded-lg text-[#2563eb]">
+                <Phone size={24} />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">
+                  Phone Verification
+                </h2>
+                <p className="text-sm text-gray-500 max-w-xl">
+                  Confirm your phone number to access bookings and alerts. OTPs are
+                  delivered securely via Twilio.
+                </p>
+              </div>
+            </div>
+            <span
+              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${
+                user.isPhoneVerified
+                  ? "bg-green-50 text-green-700 border-green-200"
+                  : "bg-yellow-50 text-yellow-700 border-yellow-200"
+              }`}
+            >
+              {user.isPhoneVerified ? (
+                <>
+                  <CheckCircle size={14} />
+                  Phone Verified
+                </>
+              ) : (
+                <>
+                  <ShieldCheck size={14} />
+                  Add & verify
+                </>
+              )}
+            </span>
+          </div>
+
+          <form onSubmit={handleSendPhoneOtp} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Mobile Number
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <input
+                  type="tel"
+                  value={phoneInput}
+                  onChange={(e) => {
+                    setPhoneInput(e.target.value);
+                    setPhoneStatus(null);
+                    setOtpSent(false);
+                    setOtpCode("");
+                    setResendCooldown(0);
+                  }}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all"
+                  placeholder="+91 98765 43210"
+                />
+              </div>
+              {!phoneInput && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Enter the number you want to receive the OTP on.
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                disabled={
+                  sendingPhoneOtp ||
+                  !phoneInput.trim() ||
+                  resendCooldown > 0
+                }
+                className="px-5 py-2.5 rounded-lg bg-[#2563eb] text-white font-semibold text-sm shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {sendingPhoneOtp
+                  ? "Sending OTP..."
+                  : otpSent
+                    ? "Resend OTP"
+                    : "Send OTP"}
+              </button>
+              {resendCooldown > 0 && (
+                <span className="text-xs text-gray-500">
+                  You can resend in {resendCooldown} second
+                  {resendCooldown !== 1 ? "s" : ""}.
+                </span>
+              )}
+              <span className="text-xs text-gray-400">
+                Current phone:{" "}
+                {user.phone ? (
+                  <>
+                    {user.phone}{" "}
+                    {user.isPhoneVerified ? "(verified)" : "(unverified)"}
+                  </>
+                ) : (
+                  "Not provided"
+                )}
+              </span>
+            </div>
+          </form>
+
+          {otpSent && (
+            <form
+              onSubmit={handleVerifyPhoneOtp}
+              className="space-y-3 max-w-md bg-blue-50 border border-blue-100 p-4 rounded-xl"
+            >
+              <p className="text-sm text-blue-700">
+                Enter the 6-digit code sent to{" "}
+                <span className="font-semibold">
+                  {otpRecipient || phoneInput}
+                </span>
+              </p>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value)}
+                className="w-full text-center text-2xl tracking-[0.5em] font-bold py-3 rounded-xl border border-blue-200 focus:ring-2 focus:ring-[#2563eb] outline-none"
+              />
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={verifyingPhoneOtp || !otpCode.trim()}
+                  className="flex-1 px-4 py-2.5 rounded-lg bg-[#2563eb] text-white font-semibold text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {verifyingPhoneOtp ? "Verifying..." : "Verify OTP"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSendPhoneOtp()}
+                  disabled={sendingPhoneOtp || resendCooldown > 0}
+                  className="text-xs text-[#2563eb] hover:underline disabled:text-gray-400 disabled:cursor-not-allowed"
+                >
+                  Resend code
+                </button>
+              </div>
+            </form>
+          )}
+
+          {phoneStatus && (
+            <div
+              className={`rounded-lg px-4 py-3 text-sm ${
+                phoneStatus.type === "success"
+                  ? "bg-green-50 text-green-600 border border-green-100"
+                  : "bg-red-50 text-red-600 border border-red-100"
+              }`}
+            >
+              {phoneStatus.message}
+            </div>
+          )}
+
+          <p className="text-xs text-gray-400">
+            OTPs are handled by Twilio. Never share your verification code with
+            anyone.
+          </p>
         </div>
 
         {/* KYC Section */}
@@ -409,155 +831,100 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {showOtp ? (
-              <div className="space-y-6 transition-all duration-300 ease-in-out">
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 text-center">
-                  <p className="text-sm text-blue-700 mb-4">
-                    We have sent a verification code to{" "}
-                    <span className="font-semibold">{phoneToVerify}</span>
-                  </p>
-                  <form
-                    onSubmit={handleVerifyOtp}
-                    className="max-w-xs mx-auto space-y-4"
-                  >
+            <form
+              onSubmit={kycForm.handleSubmit(handleKYCSubmit)}
+              className="space-y-6"
+            >
+              <p className="text-xs text-gray-500">
+                Submit your company details once your phone number above is
+                verified.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Company Name (Optional)
+                  </label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                     <input
-                      type="text"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      maxLength={6}
-                      className="w-full text-center text-2xl tracking-[0.5em] font-bold py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all uppercase"
-                      placeholder="------"
-                      required
+                      {...kycForm.register("companyName")}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all"
+                      placeholder="Business Name"
                     />
-                    <button
-                      type="submit"
-                      disabled={verifyingOtp}
-                      className="w-full bg-[#2563eb] text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-lg shadow-blue-200"
-                    >
-                      {verifyingOtp ? "Verifying..." : "Verify & Submit"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowOtp(false)}
-                      className="text-sm text-gray-500 hover:text-gray-700 hover:underline"
-                    >
-                      Cancel & Edit Details
-                    </button>
-                  </form>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    GSTIN{" "}
+                    <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    {...kycForm.register("gstin")}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all"
+                    placeholder="GSTIN Number"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Registered Address
+                  </label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <textarea
+                      rows={3}
+                      {...kycForm.register("address")}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all"
+                      placeholder="Full Address"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    PAN <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    {...kycForm.register("pan")}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all"
+                    placeholder="PAN Number"
+                  />
+                  {kycForm.formState.errors.pan && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {kycForm.formState.errors.pan.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Aadhaar Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    {...kycForm.register("aadhaar")}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all"
+                    placeholder="Aadhaar Number"
+                  />
+                  {kycForm.formState.errors.aadhaar && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {kycForm.formState.errors.aadhaar.message}
+                    </p>
+                  )}
                 </div>
               </div>
-            ) : (
-              <form
-                onSubmit={kycForm.handleSubmit(handleKYCSubmit)}
-                className="space-y-6"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Mobile Number
-                    </label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                      <input
-                        {...kycForm.register("phone")}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all"
-                        placeholder="+91 98765 43210"
-                      />
-                    </div>
-                    {kycForm.formState.errors.phone && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {kycForm.formState.errors.phone.message}
-                      </p>
-                    )}
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Company Name (Optional)
-                    </label>
-                    <div className="relative">
-                      <Building2 className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                      <input
-                        {...kycForm.register("companyName")}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all"
-                        placeholder="Business Name"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Registered Address
-                    </label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                      <textarea
-                        rows={3}
-                        {...kycForm.register("address")}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all"
-                        placeholder="Full Address"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      GSTIN{" "}
-                      <span className="text-gray-400 font-normal">
-                        (Optional)
-                      </span>
-                    </label>
-                    <input
-                      {...kycForm.register("gstin")}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all"
-                      placeholder="GSTIN Number"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      PAN <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      {...kycForm.register("pan")}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all"
-                      placeholder="PAN Number"
-                    />
-                    {kycForm.formState.errors.pan && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {kycForm.formState.errors.pan.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Aadhaar Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      {...kycForm.register("aadhaar")}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all"
-                      placeholder="Aadhaar Number"
-                    />
-                    {kycForm.formState.errors.aadhaar && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {kycForm.formState.errors.aadhaar.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <button
-                    type="submit"
-                    disabled={kycSubmitting}
-                    className="bg-[#2563eb] text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-lg shadow-blue-200"
-                  >
-                    {kycSubmitting ? "Submitting..." : "Submit KYC Details"}
-                  </button>
-                </div>
-              </form>
-            )}
+              <div className="flex justify-end pt-4">
+                <button
+                  type="submit"
+                  disabled={kycSubmitting}
+                  className="bg-[#2563eb] text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-lg shadow-blue-200"
+                >
+                  {kycSubmitting ? "Submitting..." : "Submit KYC Details"}
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
