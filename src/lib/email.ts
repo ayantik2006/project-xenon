@@ -1,12 +1,14 @@
 import { Resend } from 'resend';
+import { OTP_EXPIRY_MINUTES } from '@/lib/otp';
 
 const resendApiKey = process.env.RESEND_API_KEY;
-const authFromEmail = process.env.EMAIL_FROM_AUTH || 'HoardSpace Auth <auth@hoardspace.in>';
-const generalFromEmail = process.env.EMAIL_FROM_GENERAL || 'HoardSpace <hello@hoardspace.in>';
+const authFromEmail =
+  process.env.EMAIL_FROM || 'HoardSpace Auth <auth@hoardspace.in>';
+const generalFromEmail =
+  process.env.EMAIL_FROM || 'HoardSpace <hello@hoardspace.in>';
 
 let resendClient: Resend | null = null;
 
-// Initialize Resend client only if API key is provided
 if (resendApiKey) {
   resendClient = new Resend(resendApiKey);
 }
@@ -25,28 +27,17 @@ export interface EmailOptions {
   from?: string;
 }
 
-/**
- * Send email via Resend
- * Falls back to console logging in development if Resend is not configured
- */
 export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
   try {
-    // If Resend is not configured, log to console (development mode)
     if (!resendClient) {
-      console.log(`[MOCK EMAIL] From: ${options.from || generalFromEmail}`);
-      console.log(`[MOCK EMAIL] To: ${options.to}`);
-      console.log(`[MOCK EMAIL] Subject: ${options.subject}`);
-      console.log(`[MOCK EMAIL] Body: ${options.text || options.html}`);
-
-      if (process.env.NODE_ENV === 'production') {
-        console.error('Resend API key not configured in production!');
-        return { success: false, error: 'Email service not configured' };
-      }
-
-      return { success: true, messageId: 'mock-email-id' };
+      console.error('Resend API key not configured.');
+      return {
+        success: false,
+        error:
+          'Email verification service is unavailable right now. Please try again later.',
+      };
     }
 
-    // Send real email via Resend
     const { data, error } = await resendClient.emails.send({
       from: options.from || generalFromEmail,
       to: options.to,
@@ -57,29 +48,36 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
 
     if (error) {
       console.error('Failed to send email:', error);
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error:
+          error.message ||
+          'We could not send the verification email right now. Please try again later.',
+      };
     }
 
     console.log(`Email sent successfully to ${options.to}, ID: ${data?.id}`);
 
     return {
       success: true,
-      messageId: data?.id
+      messageId: data?.id,
     };
-
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to send email:', error);
     return {
       success: false,
-      error: error.message || 'Failed to send email'
+      error:
+        error instanceof Error && error.message
+          ? error.message
+          : 'We could not send the verification email right now. Please try again later.',
     };
   }
 }
 
-/**
- * Send OTP verification email
- */
-export async function sendOTPEmail(email: string, otp: string): Promise<EmailResult> {
+export async function sendOTPEmail(
+  email: string,
+  otp: string,
+): Promise<EmailResult> {
   const html = `
     <!DOCTYPE html>
     <html>
@@ -93,30 +91,30 @@ export async function sendOTPEmail(email: string, otp: string): Promise<EmailRes
           <h1 style="color: white; margin: 0; font-size: 28px;">HoardSpace</h1>
           <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">Outdoor Advertising Platform</p>
         </div>
-        
+
         <div style="background: #ffffff; padding: 40px 30px; border: 1px solid #e0e0e0; border-top: none;">
           <h2 style="color: #2563eb; margin-top: 0;">Verify Your Email Address</h2>
-          
-          <p style="font-size: 16px; color: #555;">Thank you for registering with HoardSpace! Please use the verification code below to complete your registration:</p>
-          
+
+          <p style="font-size: 16px; color: #555;">Thank you for registering with HoardSpace. Use the verification code below to complete your registration.</p>
+
           <div style="background: #f8f9fa; border: 2px dashed #2563eb; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
             <div style="font-size: 14px; color: #666; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Your Verification Code</div>
             <div style="font-size: 36px; font-weight: bold; color: #2563eb; letter-spacing: 8px; font-family: 'Courier New', monospace;">${otp}</div>
           </div>
-          
+
           <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
             <p style="margin: 0; font-size: 14px; color: #856404;">
-              <strong>⚠️ Security Notice:</strong> This code is valid for <strong>15 minutes</strong>. Never share this code with anyone. HoardSpace will never ask for your verification code.
+              <strong>Security Notice:</strong> This code is valid for <strong>${OTP_EXPIRY_MINUTES} minutes</strong>. Never share it with anyone. HoardSpace will never ask for your verification code.
             </p>
           </div>
-          
-          <p style="font-size: 14px; color: #777; margin-top: 30px;">If you didn't request this verification code, please ignore this email or contact our support team if you have concerns.</p>
+
+          <p style="font-size: 14px; color: #777; margin-top: 30px;">If you did not request this verification code, you can ignore this email.</p>
         </div>
-        
+
         <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0; border-top: none;">
           <p style="margin: 0; font-size: 12px; color: #999;">
-            © ${new Date().getFullYear()} HoardSpace. All rights reserved.<br>
-            <a href="https://hoardspace.com" style="color: #2563eb; text-decoration: none;">Visit our website</a>
+            &copy; ${new Date().getFullYear()} HoardSpace. All rights reserved.<br>
+            <a href="https://hoardspace.in" style="color: #2563eb; text-decoration: none;">Visit our website</a>
           </p>
         </div>
       </body>
@@ -126,11 +124,11 @@ export async function sendOTPEmail(email: string, otp: string): Promise<EmailRes
   const text = `
 Your HoardSpace verification code is: ${otp}
 
-This code is valid for 15 minutes. Never share this code with anyone.
+This code is valid for ${OTP_EXPIRY_MINUTES} minutes. Never share this code with anyone.
 
-If you didn't request this code, please ignore this email.
+If you did not request this code, you can ignore this email.
 
-© ${new Date().getFullYear()} HoardSpace. All rights reserved.
+Copyright ${new Date().getFullYear()} HoardSpace. All rights reserved.
   `;
 
   return sendEmail({
@@ -142,34 +140,39 @@ If you didn't request this code, please ignore this email.
   });
 }
 
-/**
- * Send welcome email after successful verification
- */
-export async function sendWelcomeEmail(email: string, name: string, role: 'buyer' | 'vendor'): Promise<EmailResult> {
+export async function sendWelcomeEmail(
+  email: string,
+  name: string,
+  role: 'buyer' | 'vendor',
+): Promise<EmailResult> {
   const isBuyer = role === 'buyer';
 
-  const getStartedContent = isBuyer ? `
+  const getStartedContent = isBuyer
+    ? `
             <h3 style="color: #2563eb; margin-top: 0;">Get Started as an Advertiser:</h3>
             <ul style="color: #555; padding-left: 20px;">
               <li>Browse thousands of premium hoarding locations across India</li>
-              <li>Compare prices and availability in real-time</li>
+              <li>Compare prices and availability in real time</li>
               <li>Book advertising spaces with verified vendors</li>
               <li>Manage multiple campaigns from one dashboard</li>
               <li>Track bookings and payments seamlessly</li>
             </ul>
-    ` : `
+      `
+    : `
             <h3 style="color: #2563eb; margin-top: 0;">Get Started as a Vendor:</h3>
             <ul style="color: #555; padding-left: 20px;">
               <li>List your hoarding locations and reach advertisers nationwide</li>
-              <li>Set your pricing and manage availability in real-time</li>
+              <li>Set your pricing and manage availability in real time</li>
               <li>Receive booking requests directly from brands and agencies</li>
               <li>Track your inventory performance with detailed analytics</li>
               <li>Grow your business with our transparent platform</li>
             </ul>
-    `;
+      `;
 
   const ctaText = isBuyer ? 'Browse Hoardings' : 'List Your Hoardings';
-  const ctaUrl = isBuyer ? 'https://hoardspace.in/search' : 'https://hoardspace.in/vendor/add-hoarding';
+  const ctaUrl = isBuyer
+    ? 'https://hoardspace.in/search'
+    : 'https://hoardspace.in/vendor/add-hoarding';
 
   const html = `
     <!DOCTYPE html>
@@ -181,28 +184,28 @@ export async function sendWelcomeEmail(email: string, name: string, role: 'buyer
       </head>
       <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to HoardSpace! 🎉</h1>
+          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to HoardSpace!</h1>
         </div>
-        
+
         <div style="background: #ffffff; padding: 40px 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
           <h2 style="color: #2563eb; margin-top: 0;">Hi ${name}!</h2>
-          
-          <p style="font-size: 16px; color: #555;">Your email has been successfully verified. Welcome to HoardSpace - India's leading outdoor advertising platform!</p>
-          
+
+          <p style="font-size: 16px; color: #555;">Your email has been successfully verified. Welcome to HoardSpace, India's outdoor advertising platform.</p>
+
           <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
             ${getStartedContent}
           </div>
-          
+
           <div style="text-align: center; margin: 30px 0;">
             <a href="${ctaUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">${ctaText}</a>
           </div>
-          
-          <p style="font-size: 14px; color: #777; margin-top: 30px;">Need help? Our support team is here for you at <a href="mailto:bookings@hoardspace.in" style="color: #2563eb;">bookings@hoardspace.in</a></p>
+
+          <p style="font-size: 14px; color: #777; margin-top: 30px;">Need help? Reach us at <a href="mailto:bookings@hoardspace.in" style="color: #2563eb;">bookings@hoardspace.in</a></p>
         </div>
-        
+
         <div style="text-align: center; padding: 20px;">
           <p style="margin: 0; font-size: 12px; color: #999;">
-            © ${new Date().getFullYear()} HoardSpace. All rights reserved.
+            &copy; ${new Date().getFullYear()} HoardSpace. All rights reserved.
           </p>
         </div>
       </body>
@@ -211,7 +214,7 @@ export async function sendWelcomeEmail(email: string, name: string, role: 'buyer
 
   return sendEmail({
     to: email,
-    subject: 'Welcome to HoardSpace! 🎉',
+    subject: 'Welcome to HoardSpace!',
     html,
     from: generalFromEmail,
   });

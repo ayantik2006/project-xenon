@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
-import OTP from '@/models/OTP';
 import { comparePassword } from '@/lib/password';
 import { signAccessToken, signRefreshToken } from '@/lib/jwt';
 import { loginSchema } from '@/lib/validators/user';
 import { sendOTPEmail } from '@/lib/email';
+import {
+  createPendingOTP,
+  getOTPRetryAfterSeconds,
+  keepLatestOTP,
+  normalizeEmail,
+  OTP_RESEND_COOLDOWN_SECONDS,
+} from '@/lib/otp';
 
 export async function POST(req: Request) {
   try {
@@ -17,7 +23,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
     }
 
-    const { email, password } = result.data;
+    const email = normalizeEmail(result.data.email);
+    const { password } = result.data;
 
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
@@ -31,30 +38,48 @@ export async function POST(req: Request) {
 
     // Check if email is verified
     if (!user.emailVerified) {
-      // Send new OTP
+      const retryAfterSeconds = await getOTPRetryAfterSeconds(
+        { email },
+        'verification',
+      );
+
+      if (retryAfterSeconds > 0) {
+        return NextResponse.json({
+          error: "Email not verified. Use the verification code already sent to your inbox.",
+          requiresEmailVerification: true,
+          email: user.email,
+          otpSent: true,
+          resendAvailableIn: retryAfterSeconds,
+        }, { status: 403 });
+      }
+
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+      const otpRecord = await createPendingOTP({ email }, 'verification', otp);
 
-      // Delete old OTPs for this email to prevent reuse
-      await OTP.deleteMany({ email, type: 'verification' });
-
-      await OTP.create({
-        email,
-        otp,
-        type: 'verification',
-        expiresAt
-      });
-
-      // Send OTP email
       const emailResult = await sendOTPEmail(email, otp);
       if (!emailResult.success) {
         console.error('Failed to send OTP email:', emailResult.error);
+
+        await otpRecord.deleteOne();
+
+        return NextResponse.json({
+          error:
+            "Email not verified, and we could not send a new verification code right now. Please try resending it.",
+          requiresEmailVerification: true,
+          email: user.email,
+          otpSent: false,
+          resendAvailableIn: 0,
+        }, { status: 403 });
       }
+
+      await keepLatestOTP({ email }, 'verification', otpRecord._id.toString());
 
       return NextResponse.json({
         error: "Email not verified. A verification code has been sent to your email.",
         requiresEmailVerification: true,
-        email: user.email
+        email: user.email,
+        otpSent: true,
+        resendAvailableIn: OTP_RESEND_COOLDOWN_SECONDS,
       }, { status: 403 });
     }
 
@@ -99,7 +124,7 @@ export async function POST(req: Request) {
 
     return response;
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Login Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

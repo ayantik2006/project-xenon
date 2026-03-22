@@ -1,15 +1,26 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
-import OTP from '@/models/OTP';
 import { sendOTPEmail } from '@/lib/email';
 import { sendOTPSMS } from '@/lib/sms';
+import {
+    createPendingOTP,
+    getOTPRetryAfterSeconds,
+    keepLatestOTP,
+    normalizeEmail,
+    normalizePhone,
+    OTP_RESEND_COOLDOWN_SECONDS,
+} from '@/lib/otp';
 
 export async function POST(req: Request) {
     try {
         await dbConnect();
         const body = await req.json();
-        const { email, phone, type = 'verification' } = body;
+        const email = body.email ? normalizeEmail(body.email) : undefined;
+        const phone = body.phone ? normalizePhone(body.phone) : undefined;
+        const type = body.type === 'login' || body.type === 'reset'
+            ? body.type
+            : 'verification';
 
         if (!email && !phone) {
             return NextResponse.json({ error: "Email or phone is required" }, { status: 400 });
@@ -37,61 +48,51 @@ export async function POST(req: Request) {
             }
         }
 
-        // Check rate limiting - prevent too frequent resends (1 minute cooldown)
-        const recentOTP = await OTP.findOne({
-            ...(email ? { email } : { phone }),
+        const retryAfterSeconds = await getOTPRetryAfterSeconds(
+            email ? { email } : { phone: phone! },
             type,
-            createdAt: { $gt: new Date(Date.now() - 60 * 1000) } // Within last minute
-        });
+        );
 
-        if (recentOTP) {
+        if (retryAfterSeconds > 0) {
             return NextResponse.json({
-                error: "Please wait before requesting another OTP. Try again in 1 minute."
+                error: `Please wait ${retryAfterSeconds} seconds before requesting another code.`,
+                retryAfter: retryAfterSeconds,
             }, { status: 429 });
         }
 
-        // Generate new OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-
-        // Delete old OTPs for this email/phone
-        await OTP.deleteMany({
-            ...(email ? { email } : { phone }),
-            type
-        });
-
-        // Create new OTP
-        await OTP.create({
-            ...(email ? { email } : { phone }),
-            otp,
-            type,
-            expiresAt
-        });
+        const recipient = email ? { email } : { phone: phone! };
+        const otpRecord = await createPendingOTP(recipient, type, otp);
 
         // Send OTP
         if (email) {
             const result = await sendOTPEmail(email, otp);
             if (!result.success) {
                 console.error('Failed to send OTP email:', result.error);
+                await otpRecord.deleteOne();
                 return NextResponse.json({
-                    error: "Failed to send OTP email. Please try again."
-                }, { status: 500 });
+                    error: "We could not send the verification email right now. Please try again shortly."
+                }, { status: 502 });
             }
         } else if (phone) {
             const result = await sendOTPSMS(phone, otp);
             if (!result.success) {
                 console.error('Failed to send OTP SMS:', result.error);
+                await otpRecord.deleteOne();
                 return NextResponse.json({
-                    error: "Failed to send OTP SMS. Please try again."
-                }, { status: 500 });
+                    error: "We could not send the verification SMS right now. Please try again shortly."
+                }, { status: 502 });
             }
         }
 
+        await keepLatestOTP(recipient, type, otpRecord._id.toString());
+
         return NextResponse.json({
-            message: `OTP sent successfully to ${email || phone}`
+            message: `OTP sent successfully to ${email || phone}`,
+            resendAvailableIn: OTP_RESEND_COOLDOWN_SECONDS,
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Resend OTP Error:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }

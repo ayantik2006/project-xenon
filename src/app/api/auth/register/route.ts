@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
-import OTP from '@/models/OTP';
 import { hashPassword } from '@/lib/password';
 import { signupSchema } from '@/lib/validators/user';
 import { sendOTPEmail } from '@/lib/email';
+import {
+  createPendingOTP,
+  getOTPRetryAfterSeconds,
+  keepLatestOTP,
+  normalizeEmail,
+  OTP_RESEND_COOLDOWN_SECONDS,
+} from '@/lib/otp';
 
 export async function POST(req: Request) {
   try {
@@ -16,7 +22,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
     }
 
-    const { name, email, password, role } = result.data;
+    const { name, password, role } = result.data;
+    const email = normalizeEmail(result.data.email);
 
     const existingUser = await User.findOne({ email });
 
@@ -27,12 +34,10 @@ export async function POST(req: Request) {
 
     const hashedPassword = await hashPassword(password);
 
-    let user;
-
     // If user exists but NOT verified, update their details and resend OTP
     if (existingUser && !existingUser.emailVerified) {
       // Update existing unverified user with new details
-      user = await User.findByIdAndUpdate(
+      await User.findByIdAndUpdate(
         existingUser._id,
         {
           name,
@@ -43,11 +48,9 @@ export async function POST(req: Request) {
         { new: true }
       );
 
-      // Delete old OTPs for this email
-      await OTP.deleteMany({ email, type: 'verification' });
     } else {
       // Create new user
-      user = await User.create({
+      await User.create({
         name,
         email,
         password: hashedPassword,
@@ -57,26 +60,41 @@ export async function POST(req: Request) {
       });
     }
 
-    // Generate 6-digit OTP
+    const retryAfterSeconds = await getOTPRetryAfterSeconds(
+      { email },
+      'verification',
+    );
+
+    if (retryAfterSeconds > 0) {
+      return NextResponse.json({
+        message: "A verification code was already sent recently. Please check your inbox.",
+        email,
+        verificationRequired: true,
+        otpSent: true,
+        resendAvailableIn: retryAfterSeconds,
+      });
+    }
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-
-    // Delete any old OTPs for this email (cleanup orphaned OTPs)
-    await OTP.deleteMany({ email, type: 'verification' });
-
-    await OTP.create({
-      email,
-      otp,
-      type: 'verification',
-      expiresAt
-    });
-
-    // Send OTP email
+    const otpRecord = await createPendingOTP({ email }, 'verification', otp);
     const emailResult = await sendOTPEmail(email, otp);
+
     if (!emailResult.success) {
       console.error('Failed to send OTP email:', emailResult.error);
-      // Continue anyway - user can request resend
+
+      await otpRecord.deleteOne();
+
+      return NextResponse.json({
+        message:
+          "Your account was created, but we could not send the verification code. Please try resending it.",
+        email,
+        verificationRequired: true,
+        otpSent: false,
+        resendAvailableIn: 0,
+      }, { status: 202 });
     }
+
+    await keepLatestOTP({ email }, 'verification', otpRecord._id.toString());
 
     // Don't assign tokens yet - user must verify email first
     return NextResponse.json({
@@ -84,10 +102,12 @@ export async function POST(req: Request) {
         ? "A new verification code has been sent to your email."
         : "Registration successful! Please check your email to verify your account.",
       email: email,
-      verificationRequired: true
+      verificationRequired: true,
+      otpSent: true,
+      resendAvailableIn: OTP_RESEND_COOLDOWN_SECONDS,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Register Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

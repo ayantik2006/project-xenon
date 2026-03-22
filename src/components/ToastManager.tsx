@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Toaster, toast } from "pulse-toast";
+import { ToastContainer, toast } from "react-toastify";
 
 export default function ToastManager() {
   const toastFired = useRef(false);
@@ -14,9 +14,11 @@ export default function ToastManager() {
       if (errorMsg === "Please register first" && !toastFired.current) {
         toastFired.current = true;
         
-        // Timeout to allow DOM mount for pulse-toast
+        // Allow the toast container to mount before triggering the first toast.
         setTimeout(() => {
-          toast({ message: errorMsg, type: "failure", duration: 4000 });
+          toast.error(errorMsg, {
+            autoClose: 4000,
+          });
         }, 100);
         
         // Clean URL softly
@@ -26,5 +28,5 @@ export default function ToastManager() {
     }
   }, []);
 
-  return <Toaster position="top-right" />;
+  return <ToastContainer position="top-right" />;
 }

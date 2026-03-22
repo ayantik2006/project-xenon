@@ -1,12 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import dbConnect from '@/lib/dbConnect';
-import User from '@/models/User';
+import User, { UserRole } from '@/models/User';
 import { signAccessToken, signRefreshToken } from '@/lib/jwt';
 
 export async function GET(req: NextRequest) {
     try {
         const searchParams = req.nextUrl.searchParams;
+        const stateParam = searchParams.get('state');
+        let oauthMode: 'login' | 'signup' = 'login';
+        let requestedRole: UserRole = 'buyer';
+
+        if (stateParam) {
+            try {
+                const parsed = JSON.parse(stateParam);
+                if (parsed.mode === 'signup' || parsed.mode === 'login') {
+                    oauthMode = parsed.mode;
+                }
+                if (parsed.role && ['buyer', 'vendor', 'admin'].includes(parsed.role)) {
+                    requestedRole = parsed.role;
+                }
+            } catch (err) {
+                console.warn('Invalid state payload from Google OAuth', err);
+            }
+        }
         const code = searchParams.get('code');
         const error = searchParams.get('error');
 
@@ -83,6 +100,18 @@ export async function GET(req: NextRequest) {
                 user.authProvider = 'google';
             }
             await user.save();
+        } else if (oauthMode === 'signup') {
+            user = await User.create({
+                name:
+                    googleUser.name ||
+                    googleUser.email?.split('@')[0] ||
+                    'Google User',
+                email: googleUser.email,
+                googleId: googleUser.id,
+                authProvider: 'google',
+                emailVerified: true,
+                role: requestedRole,
+            });
         } else {
             // New user trying to login without registering first
             return NextResponse.redirect(new URL('/?error=Please%20register%20first', req.url));

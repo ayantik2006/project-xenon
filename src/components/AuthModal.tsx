@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -30,9 +30,38 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-type Step = "role" | "auth" | "verify-email" | "kyc" | "verify-phone";
+type Step = "role" | "auth" | "verify-email" | "kyc-choice" | "kyc" | "verify-phone";
 type Role = "buyer" | "vendor";
 type AuthMode = "login" | "signup";
+type AuthApiResponse = {
+  error?: string;
+  message?: string;
+  email?: string;
+  phone?: string;
+  verificationRequired?: boolean;
+  requiresEmailVerification?: boolean;
+  phoneVerificationRequired?: boolean;
+  otpSent?: boolean;
+  resendAvailableIn?: number;
+  user?: {
+    isPhoneVerified: boolean;
+  };
+};
+
+const stepOrder: Step[] = [
+  "role",
+  "auth",
+  "verify-email",
+  "kyc-choice",
+  "kyc",
+  "verify-phone",
+];
+
+function formatCountdown(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+}
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [step, setStep] = useState<Step>("role");
@@ -42,7 +71,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [kycDeferred, setKycDeferred] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [emailResendCooldown, setEmailResendCooldown] = useState(0);
+  const [phoneResendCooldown, setPhoneResendCooldown] = useState(0);
 
   const signupForm = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
@@ -61,90 +94,252 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     resolver: zodResolver(kycSchema),
   });
 
+  const resetModalState = () => {
+    setStep("role");
+    setRole("buyer");
+    setAuthMode("signup");
+    setEmail("");
+    setPhone("");
+    setLoading(false);
+    setError("");
+    setNotice("");
+    setKycDeferred(false);
+    setTermsAccepted(false);
+    setEmailResendCooldown(0);
+    setPhoneResendCooldown(0);
+    signupForm.reset({ name: "", email: "", password: "", role: "buyer" });
+    loginForm.reset({ email: "", password: "" });
+    otpForm.reset({ otp: "" });
+    kycForm.reset({
+      phone: "",
+      companyName: "",
+      gstin: "",
+      pan: "",
+      aadhaar: "",
+      address: "",
+      documents: [],
+    });
+  };
+
+  const handleClose = () => {
+    resetModalState();
+    onClose();
+  };
+
+  const moveToEmailVerification = (
+    targetEmail: string,
+    resendAvailableIn = 60,
+    nextError = "",
+    nextNotice = "",
+  ) => {
+    setEmail(targetEmail);
+    setStep("verify-email");
+    setEmailResendCooldown(resendAvailableIn);
+    setError(nextError);
+    setNotice(nextNotice);
+    otpForm.reset({ otp: "" });
+  };
+
+  const moveToPhoneVerification = (
+    targetPhone: string,
+    resendAvailableIn = 60,
+    nextError = "",
+    nextNotice = "",
+  ) => {
+    setPhone(targetPhone);
+    setStep("verify-phone");
+    setPhoneResendCooldown(resendAvailableIn);
+    setError(nextError);
+    setNotice(nextNotice);
+    otpForm.reset({ otp: "" });
+  };
+
+  useEffect(() => {
+    if (!isOpen) {
+      setStep("role");
+      setRole("buyer");
+      setAuthMode("signup");
+      setEmail("");
+      setPhone("");
+      setLoading(false);
+      setError("");
+      setNotice("");
+      setKycDeferred(false);
+      setTermsAccepted(false);
+      setEmailResendCooldown(0);
+      setPhoneResendCooldown(0);
+      signupForm.reset({ name: "", email: "", password: "", role: "buyer" });
+      loginForm.reset({ email: "", password: "" });
+      otpForm.reset({ otp: "" });
+      kycForm.reset({
+        phone: "",
+        companyName: "",
+        gstin: "",
+        pan: "",
+        aadhaar: "",
+        address: "",
+        documents: [],
+      });
+    }
+  }, [isOpen, kycForm, loginForm, otpForm, signupForm]);
+
+  useEffect(() => {
+    if (emailResendCooldown <= 0) return;
+
+    const timer = window.setTimeout(() => {
+      setEmailResendCooldown((current) => Math.max(0, current - 1));
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [emailResendCooldown]);
+
+  useEffect(() => {
+    if (phoneResendCooldown <= 0) return;
+
+    const timer = window.setTimeout(() => {
+      setPhoneResendCooldown((current) => Math.max(0, current - 1));
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [phoneResendCooldown]);
+
   if (!isOpen) return null;
 
   const handleRoleSelect = (selectedRole: Role) => {
     setRole(selectedRole);
     signupForm.setValue("role", selectedRole);
     setStep("auth");
-    setAuthMode("signup"); // Default to signup after role selection as per flow description
+    setAuthMode("signup");
+    setError("");
+    setNotice("");
   };
 
-  const handleAuthSubmit = async (data: any) => {
+  const handleSignupSubmit = async (data: SignupInput) => {
     setError("");
+    setNotice("");
     setLoading(true);
+
     try {
-      if (authMode === "signup") {
-        const signupData = { ...data, role };
-        const res = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include", // Enable cookies
-          body: JSON.stringify(signupData),
-        });
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.error || "Signup failed");
+      const signupData = { ...data, role };
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(signupData),
+      });
+      const result: AuthApiResponse = await res.json();
 
-        setEmail(result.email || data.email);
-        // Token is now in HttpOnly cookie, no localStorage needed
-        setStep("verify-email");
-      } else {
-        const res = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include", // Enable cookies
-          body: JSON.stringify(data),
-        });
-        const result = await res.json();
-        if (!res.ok) {
-          if (result.requiresEmailVerification) {
-            setEmail(data.email);
-            setStep("verify-email");
-            throw new Error("Email not verified. Please verify.");
-          }
-          throw new Error(result.error || "Login failed");
-        }
-
-        // Token is now in HttpOnly cookie, no localStorage needed
-        // Check if KYC is needed
-        if (!result.user.isPhoneVerified) {
-          setStep("kyc");
-        } else {
-          onClose();
-          window.location.reload();
-        }
+      if (!res.ok) {
+        throw new Error(result.error || "Signup failed");
       }
-    } catch (err: any) {
-      setError(err.message);
+
+      moveToEmailVerification(
+        result.email || data.email,
+        result.resendAvailableIn ?? 60,
+        result.otpSent === false
+          ? result.message ||
+              "We could not send your verification code yet. Please use resend."
+          : "",
+        result.otpSent === false ? "" : result.message || "",
+      );
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Signup failed");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleLoginSubmit = async (data: LoginInput) => {
+    setError("");
+    setNotice("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      const result: AuthApiResponse = await res.json();
+
+      if (!res.ok) {
+        if (result.requiresEmailVerification) {
+          moveToEmailVerification(
+            result.email || data.email,
+            result.resendAvailableIn ?? 0,
+            result.otpSent === false
+              ? result.error ||
+                  "Your email is not verified and we could not send a new code yet."
+              : "",
+            result.otpSent === false ? "" : result.error || "",
+          );
+          return;
+        }
+
+        throw new Error(result.error || "Login failed");
+      }
+
+      if (!result.user?.isPhoneVerified) {
+        setStep("kyc-choice");
+        setKycDeferred(false);
+        setError("");
+        setNotice("");
+      } else {
+        handleClose();
+        window.location.reload();
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleContinueWithGoogle = () => {
+    const params = new URLSearchParams({ mode: authMode, role });
+    window.location.href = `/api/auth/google?${params.toString()}`;
+  };
+
   const handleVerifyEmail = async (data: OTPInput) => {
     setError("");
+    setNotice("");
     setLoading(true);
     try {
       const res = await fetch("/api/auth/verify-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // Enable cookies
+        credentials: "include",
         body: JSON.stringify({ email, otp: data.otp }),
       });
-      const result = await res.json();
+      const result: AuthApiResponse = await res.json();
       if (!res.ok) throw new Error(result.error || "Verification failed");
 
-      // Token is now in HttpOnly cookie, no localStorage needed
-      setStep("kyc");
-    } catch (err: any) {
-      setError(err.message);
+      otpForm.reset({ otp: "" });
+      setStep("kyc-choice");
+      setNotice(result.message || "");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Verification failed");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleStartKYC = () => {
+    setError("");
+    setNotice("");
+    setKycDeferred(false);
+    setStep("kyc");
+  };
+
+  const handleDeferKYC = () => {
+    setError("");
+    setKycDeferred(true);
+  };
+
   const handleKYCSubmit = async (data: KYCInput) => {
     setError("");
+    setNotice("");
     setLoading(true);
     try {
       const res = await fetch("/api/auth/kyc", {
@@ -152,16 +347,23 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include", // Send cookies, no Authorization header needed
+        credentials: "include",
         body: JSON.stringify(data),
       });
-      const result = await res.json();
+      const result: AuthApiResponse = await res.json();
       if (!res.ok) throw new Error(result.error || "KYC submission failed");
 
-      setPhone(data.phone);
-      setStep("verify-phone");
-    } catch (err: any) {
-      setError(err.message);
+      moveToPhoneVerification(
+        result.phone || data.phone,
+        result.resendAvailableIn ?? 60,
+        result.otpSent === false
+          ? result.message ||
+              "KYC was saved, but we could not send the phone verification code yet."
+          : "",
+        result.otpSent === false ? "" : result.message || "",
+      );
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "KYC submission failed");
     } finally {
       setLoading(false);
     }
@@ -169,6 +371,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const handleVerifyPhone = async (data: OTPInput) => {
     setError("");
+    setNotice("");
     setLoading(true);
     try {
       const res = await fetch("/api/auth/verify-phone", {
@@ -176,16 +379,86 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include", // Send cookies, no Authorization header needed
+        credentials: "include",
         body: JSON.stringify({ phone, otp: data.otp }),
       });
-      const result = await res.json();
+      const result: AuthApiResponse = await res.json();
       if (!res.ok) throw new Error(result.error || "Phone verification failed");
 
-      onClose();
+      handleClose();
       window.location.reload();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Phone verification failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    setError("");
+    setNotice("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/resend-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, type: "verification" }),
+      });
+      const result: AuthApiResponse & { retryAfter?: number } = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 429) {
+          setEmailResendCooldown(result.retryAfter ?? 0);
+        }
+        throw new Error(result.error || "Could not resend the verification code");
+      }
+
+      setEmailResendCooldown(result.resendAvailableIn ?? 60);
+      setNotice(result.message || "A new verification code has been sent.");
+      otpForm.reset({ otp: "" });
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not resend the verification code",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendPhone = async () => {
+    setError("");
+    setNotice("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/resend-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ phone, type: "verification" }),
+      });
+      const result: AuthApiResponse & { retryAfter?: number } = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 429) {
+          setPhoneResendCooldown(result.retryAfter ?? 0);
+        }
+        throw new Error(result.error || "Could not resend the verification code");
+      }
+
+      setPhoneResendCooldown(result.resendAvailableIn ?? 60);
+      setNotice(result.message || "A new verification code has been sent.");
+      otpForm.reset({ otp: "" });
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not resend the verification code",
+      );
     } finally {
       setLoading(false);
     }
@@ -194,9 +467,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={handleClose}
       />
 
       {/* Modal Content */}
@@ -234,7 +507,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         {/* Right Side - Forms */}
         <div className="w-full md:w-7/12 p-8 relative bg-white">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
           >
             <X size={20} />
@@ -243,24 +516,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <div className="h-full flex flex-col justify-center">
             {/* Steps Visual Indicator (Optional) */}
             <div className="mb-6 flex gap-2">
-              {["role", "auth", "verify-email", "kyc", "verify-phone"].map(
-                (s, i) => (
-                  <div
-                    key={s}
-                    className={`h-1 flex-1 rounded-full ${
-                      [
-                        "role",
-                        "auth",
-                        "verify-email",
-                        "kyc",
-                        "verify-phone",
-                      ].indexOf(step) >= i
-                        ? "bg-[#2563eb]"
-                        : "bg-gray-200"
-                    }`}
-                  />
-                ),
-              )}
+              {stepOrder.map((s, i) => (
+                <div
+                  key={s}
+                  className={`h-1 flex-1 rounded-full ${
+                    stepOrder.indexOf(step) >= i ? "bg-[#2563eb]" : "bg-gray-200"
+                  }`}
+                />
+              ))}
             </div>
 
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
@@ -268,6 +531,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               {step === "auth" &&
                 (authMode === "signup" ? "Create Account" : "Welcome Back")}
               {step === "verify-email" && "Verify Your Email"}
+              {step === "kyc-choice" && "KYC Verification"}
               {step === "kyc" && "Complete KYC"}
               {step === "verify-phone" && "Verify Phone"}
             </h2>
@@ -278,6 +542,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   ? "Enter your details to register"
                   : "Login to access your dashboard")}
               {step === "verify-email" && `We sent a code to ${email}`}
+              {step === "kyc-choice" &&
+                "KYC is required before booking. Verify now or come back later."}
               {step === "kyc" && "Fill in your details for verification"}
               {step === "verify-phone" && `We sent a code to ${phone}`}
             </p>
@@ -285,6 +551,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             {error && (
               <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg">
                 {error}
+              </div>
+            )}
+            {notice && (
+              <div className="mb-4 p-3 bg-blue-50 text-blue-700 text-sm rounded-lg">
+                {notice}
               </div>
             )}
 
@@ -333,6 +604,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     onClick={() => {
                       setStep("auth");
                       setAuthMode("login");
+                      setError("");
+                      setNotice("");
                     }}
                     className="text-[#2563eb] font-medium hover:underline"
                   >
@@ -347,8 +620,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <form
                 onSubmit={
                   authMode === "signup"
-                    ? signupForm.handleSubmit(handleAuthSubmit)
-                    : loginForm.handleSubmit(handleAuthSubmit)
+                    ? signupForm.handleSubmit(handleSignupSubmit)
+                    : loginForm.handleSubmit(handleLoginSubmit)
                 }
                 className="space-y-4"
               >
@@ -377,6 +650,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       {...(authMode === "signup"
                         ? signupForm.register("email")
                         : loginForm.register("email"))}
+                      type="email"
+                      autoComplete="email"
                       className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-shadow"
                       placeholder="Email Address"
                     />
@@ -400,6 +675,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       {...(authMode === "signup"
                         ? signupForm.register("password")
                         : loginForm.register("password"))}
+                      autoComplete={
+                        authMode === "signup" ? "new-password" : "current-password"
+                      }
                       className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-shadow"
                       placeholder="Password"
                     />
@@ -474,7 +752,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
                 <button
                   type="button"
-                  onClick={() => (window.location.href = "/api/auth/google")}
+                  onClick={handleContinueWithGoogle}
                   className="w-full flex items-center justify-center gap-2 border py-3 rounded-lg hover:bg-gray-50 transition-colors font-medium text-gray-700"
                 >
                   <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -504,6 +782,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     onClick={() => {
                       setAuthMode(authMode === "signup" ? "login" : "signup");
                       setTermsAccepted(false);
+                      setError("");
+                      setNotice("");
                     }}
                     className="text-[#2563eb] text-sm hover:underline"
                   >
@@ -525,6 +805,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   <input
                     {...otpForm.register("otp")}
                     maxLength={6}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     className="w-full text-center text-3xl tracking-[1em] font-bold py-4 border-b-2 focus:border-[#2563eb] outline-none"
                     placeholder="000000"
                   />
@@ -541,11 +823,62 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 </button>
                 <button
                   type="button"
-                  className="w-full text-sm text-gray-500 hover:text-[#2563eb]"
+                  onClick={handleResendEmail}
+                  disabled={loading || emailResendCooldown > 0}
+                  className="w-full text-sm text-gray-500 hover:text-[#2563eb] disabled:cursor-not-allowed disabled:text-gray-400"
                 >
-                  Resend Code
+                  {emailResendCooldown > 0
+                    ? `Resend Code in ${formatCountdown(emailResendCooldown)}`
+                    : "Resend Code"}
                 </button>
               </form>
+            )}
+
+            {/* Step 3.5: KYC Choice */}
+            {step === "kyc-choice" && (
+              <div className="space-y-5 text-center">
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  You just finished email verification. Would you like to complete
+                  your KYC now or later from your profile?
+                </p>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={handleStartKYC}
+                    className="flex-1 bg-[#2563eb] text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    Verify KYC Now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeferKYC}
+                    className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:border-gray-400 transition-colors"
+                  >
+                    I'll verify later
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400">
+                  KYC is required before booking media; you can finish it anytime
+                  from your profile.
+                </p>
+                {kycDeferred && (
+                  <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-left text-sm text-gray-600 space-y-2">
+                    <p>
+                      We’ll keep your session open. Reopen this modal when you’re ready to
+                      submit your KYC details.
+                    </p>
+                    <p className="text-right">
+                      <button
+                        type="button"
+                        onClick={handleClose}
+                        className="text-[#2563eb] font-semibold hover:underline"
+                      >
+                        Close
+                      </button>
+                    </p>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Step 4: KYC Form */}
@@ -664,6 +997,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   <input
                     {...otpForm.register("otp")}
                     maxLength={6}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     className="w-full text-center text-3xl tracking-[1em] font-bold py-4 border-b-2 focus:border-[#2563eb] outline-none"
                     placeholder="000000"
                   />
@@ -677,6 +1012,16 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   className="w-full bg-[#2563eb] text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
                   {loading ? "Complete Registration" : "Verify & Login"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResendPhone}
+                  disabled={loading || phoneResendCooldown > 0}
+                  className="w-full text-sm text-gray-500 hover:text-[#2563eb] disabled:cursor-not-allowed disabled:text-gray-400"
+                >
+                  {phoneResendCooldown > 0
+                    ? `Resend Code in ${formatCountdown(phoneResendCooldown)}`
+                    : "Resend Code"}
                 </button>
               </form>
             )}

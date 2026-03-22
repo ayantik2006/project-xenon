@@ -18,6 +18,12 @@ export async function GET(req: Request) {
         googleAuthUrl.searchParams.set('scope', 'openid email profile');
         googleAuthUrl.searchParams.set('access_type', 'offline');
         googleAuthUrl.searchParams.set('prompt', 'consent');
+        const requestUrl = new URL(req.url);
+        const mode = requestUrl.searchParams.get('mode') || 'login';
+        const role = requestUrl.searchParams.get('role') || 'buyer';
+
+        const statePayload = JSON.stringify({ mode, role });
+        googleAuthUrl.searchParams.set('state', statePayload);
 
         // Redirect to Google OAuth consent screen
         return NextResponse.redirect(googleAuthUrl.toString());

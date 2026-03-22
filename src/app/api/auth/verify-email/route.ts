@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
-import OTP from '@/models/OTP';
 import { signAccessToken, signRefreshToken } from '@/lib/jwt';
 import { otpSchema } from '@/lib/validators/user';
 import { sendWelcomeEmail } from '@/lib/email';
+import { clearOTPs, findValidOTP, normalizeEmail } from '@/lib/otp';
 
 export async function POST(req: Request) {
   try {
     await dbConnect();
     const body = await req.json();
-    const { email, otp } = body;
+    const otp = body.otp;
+    const email = body.email ? normalizeEmail(body.email) : "";
 
     // Validate Input
     if (!email) {
@@ -21,15 +22,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
     }
 
-    const validOTP = await OTP.findOne({
-      email,
-      otp,
-      type: 'verification',
-      expiresAt: { $gt: new Date() }
-    });
+    const validOTP = await findValidOTP({ email }, 'verification', otp);
 
     if (!validOTP) {
-      return NextResponse.json({ error: "Invalid or expired OTP" }, { status: 400 });
+      return NextResponse.json({
+        error: "That verification code is invalid or expired. Please try again or request a new code.",
+      }, { status: 400 });
     }
 
     // Verify User
@@ -44,7 +42,7 @@ export async function POST(req: Request) {
     }
 
     // Delete used OTP
-    await OTP.deleteMany({ email, type: 'verification' });
+    await clearOTPs({ email }, 'verification');
 
     // Send welcome email only for buyers and vendors (fire and forget - don't block the response)
     if (user.role === 'buyer' || user.role === 'vendor') {
@@ -93,7 +91,7 @@ export async function POST(req: Request) {
 
     return response;
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Verify Email Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
