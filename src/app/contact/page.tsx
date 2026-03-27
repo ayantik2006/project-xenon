@@ -418,7 +418,7 @@ export default function ContactPage() {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-none focus:bg-white focus:ring-0 focus:border-blue-600 outline-none transition-all font-medium text-slate-900 placeholder:text-slate-400"
+                  className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-none focus:bg-white focus:ring-0 focus:border-blue-600 outline-none transition-all font-medium text-black placeholder:text-slate-400"
                   placeholder="John Doe"
                 />
               </div>
@@ -433,7 +433,7 @@ export default function ContactPage() {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-none focus:bg-white focus:ring-0 focus:border-blue-600 outline-none transition-all font-medium text-slate-900 placeholder:text-slate-400"
+                  className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-none focus:bg-white focus:ring-0 focus:border-blue-600 outline-none transition-all font-medium text-black placeholder:text-slate-400"
                   placeholder="john@example.com"
                 />
               </div>
@@ -449,7 +449,7 @@ export default function ContactPage() {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-none focus:bg-white focus:ring-0 focus:border-blue-600 outline-none transition-all font-medium text-slate-900 placeholder:text-slate-400"
+                  className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-none focus:bg-white focus:ring-0 focus:border-blue-600 outline-none transition-all font-medium text-black placeholder:text-slate-400"
                   placeholder="+91 98765 43210"
                 />
               </div>
@@ -464,7 +464,7 @@ export default function ContactPage() {
                   value={formData.subject}
                   onChange={handleChange}
                   required
-                  className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-none focus:bg-white focus:ring-0 focus:border-blue-600 outline-none transition-all font-medium text-slate-900 placeholder:text-slate-400"
+                  className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-none focus:bg-white focus:ring-0 focus:border-blue-600 outline-none transition-all font-medium text-black placeholder:text-slate-400"
                   placeholder="How can we help?"
                 />
               </div>
@@ -480,7 +480,7 @@ export default function ContactPage() {
                 onChange={handleChange}
                 required
                 rows={6}
-                className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-none focus:bg-white focus:ring-0 focus:border-blue-600 outline-none transition-all resize-none font-medium text-slate-900 placeholder:text-slate-400"
+                className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-none focus:bg-white focus:ring-0 focus:border-blue-600 outline-none transition-all resize-none font-medium text-black placeholder:text-slate-400"
                 placeholder="Tell us more about your inquiry..."
               />
             </div>

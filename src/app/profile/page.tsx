@@ -696,7 +696,7 @@ export default function ProfilePage() {
                     setOtpCode("");
                     setResendCooldown(0);
                   }}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all text-black"
                   placeholder="+91 98765 43210"
                 />
               </div>
@@ -760,7 +760,7 @@ export default function ProfilePage() {
                 maxLength={6}
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value)}
-                className="w-full text-center text-2xl tracking-[0.5em] font-bold py-3 rounded-xl border border-blue-200 focus:ring-2 focus:ring-[#2563eb] outline-none"
+                className="w-full text-center text-2xl tracking-[0.5em] font-bold py-3 rounded-xl border border-blue-200 focus:ring-2 focus:ring-[#2563eb] outline-none text-black"
               />
               <div className="flex flex-wrap items-center gap-3">
                 <button
@@ -849,7 +849,7 @@ export default function ProfilePage() {
                     <Building2 className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                     <input
                       {...kycForm.register("companyName")}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all text-black"
                       placeholder="Business Name"
                     />
                   </div>
@@ -862,7 +862,7 @@ export default function ProfilePage() {
                   </label>
                   <input
                     {...kycForm.register("gstin")}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all text-black"
                     placeholder="GSTIN Number"
                   />
                 </div>
@@ -876,7 +876,7 @@ export default function ProfilePage() {
                     <textarea
                       rows={3}
                       {...kycForm.register("address")}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all text-black"
                       placeholder="Full Address"
                     />
                   </div>
@@ -888,7 +888,7 @@ export default function ProfilePage() {
                   </label>
                   <input
                     {...kycForm.register("pan")}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all text-black"
                     placeholder="PAN Number"
                   />
                   {kycForm.formState.errors.pan && (
@@ -904,7 +904,7 @@ export default function ProfilePage() {
                   </label>
                   <input
                     {...kycForm.register("aadhaar")}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all text-black"
                     placeholder="Aadhaar Number"
                   />
                   {kycForm.formState.errors.aadhaar && (

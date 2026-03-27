@@ -25,6 +25,14 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+@layer base {
+  input,
+  textarea,
+  select {
+    color: #000000 !important;
+  }
+}
+
 @keyframes shine {
   from {
     background-position: 200% center;

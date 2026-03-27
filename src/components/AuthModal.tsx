@@ -631,7 +631,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       <UserIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                       <input
                         {...signupForm.register("name")}
-                        className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-shadow"
+                        className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-shadow text-black"
                         placeholder="Full Name"
                       />
                     </div>
@@ -652,7 +652,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         : loginForm.register("email"))}
                       type="email"
                       autoComplete="email"
-                      className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-shadow"
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-shadow text-black"
                       placeholder="Email Address"
                     />
                   </div>
@@ -678,7 +678,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       autoComplete={
                         authMode === "signup" ? "new-password" : "current-password"
                       }
-                      className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-shadow"
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-shadow text-black"
                       placeholder="Password"
                     />
                   </div>
@@ -807,7 +807,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     maxLength={6}
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    className="w-full text-center text-3xl tracking-[1em] font-bold py-4 border-b-2 focus:border-[#2563eb] outline-none"
+                    className="w-full text-center text-3xl tracking-[1em] font-bold py-4 border-b-2 focus:border-[#2563eb] outline-none text-black"
                     placeholder="000000"
                   />
                   <p className="text-xs text-gray-400 mt-2">
@@ -895,7 +895,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     <Phone className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                     <input
                       {...kycForm.register("phone")}
-                      className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none"
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none text-black"
                       placeholder="+91 98765 43210"
                     />
                   </div>
@@ -915,7 +915,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     <textarea
                       rows={2}
                       {...kycForm.register("address")}
-                      className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none"
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none text-black"
                       placeholder="Registered Address"
                     />
                   </div>
@@ -932,7 +932,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     </label>
                     <input
                       {...kycForm.register("gstin")}
-                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none"
+                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none text-black"
                       placeholder="GST Number"
                     />
                   </div>
@@ -942,7 +942,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     </label>
                     <input
                       {...kycForm.register("pan")}
-                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none"
+                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none text-black"
                       placeholder="PAN Number"
                     />
                     {kycForm.formState.errors.pan && (
@@ -959,7 +959,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   </label>
                   <input
                     {...kycForm.register("aadhaar")}
-                    className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none"
+                    className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none text-black"
                     placeholder="Aadhaar Number"
                   />
                   {kycForm.formState.errors.aadhaar && (
@@ -999,7 +999,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     maxLength={6}
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    className="w-full text-center text-3xl tracking-[1em] font-bold py-4 border-b-2 focus:border-[#2563eb] outline-none"
+                    className="w-full text-center text-3xl tracking-[1em] font-bold py-4 border-b-2 focus:border-[#2563eb] outline-none text-black"
                     placeholder="000000"
                   />
                   <p className="text-xs text-gray-400 mt-2">
