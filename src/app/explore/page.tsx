@@ -1,6 +1,10 @@
 import dbConnect from "@/lib/dbConnect";
 import Hoarding from "@/models/Hoarding";
 import ExploreClient from "./ExploreClient";
+import {
+  getPlatformPricingSettings,
+  withBuyerFacingPricing,
+} from "@/lib/platformPricing";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +12,10 @@ async function getHoardings() {
   await dbConnect();
   // Fetch approved hoardings, sorted newest first
   const hoardings = await Hoarding.find({ status: "approved" }).sort({ createdAt: -1 });
-  return JSON.parse(JSON.stringify(hoardings));
+  const settings = await getPlatformPricingSettings();
+  return hoardings.map((hoarding) =>
+    withBuyerFacingPricing(JSON.parse(JSON.stringify(hoarding)), settings),
+  );
 }
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>

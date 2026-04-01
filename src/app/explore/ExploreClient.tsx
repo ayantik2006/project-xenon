@@ -158,6 +158,12 @@ export default function ExploreClient({ initialHoardings, initialCity = "" }: { 
                 'https://res.cloudinary.com/dpju1wia5/image/upload/v1774848146/rcmhjqgezin7s7hbsiii.png',
               ];
               const placeholderImage = sampleImages[idx % sampleImages.length];
+              if (
+                !(typeof hoarding.minimumBookingAmount === "number" &&
+                hoarding.minimumBookingAmount > 0)
+              ) {
+                hoarding.minimumBookingAmount = hoarding.pricePerMonth || 0;
+              }
 
               return (
               <Link href={`/hoardings/${hoarding._id}`} key={hoarding._id}>
@@ -185,7 +191,13 @@ export default function ExploreClient({ initialHoardings, initialCity = "" }: { 
                       <div className="flex items-center gap-3 text-slate-600">
                         <User className="w-4 h-4 text-[#2563eb]" />
                         <span className="text-sm font-medium">
-                          {hoarding.uniqueReach ? (hoarding.uniqueReach / 1000).toFixed(1) + 'K' : '88.3K'} Unique Reach
+                          {typeof hoarding.uniqueReach === "number" &&
+                          hoarding.uniqueReach > 0
+                            ? `${hoarding.uniqueReach.toLocaleString("en-IN")} Unique Reach`
+                            : typeof hoarding.uniqueFootfall === "number" &&
+                                hoarding.uniqueFootfall > 0
+                              ? `${hoarding.uniqueFootfall.toLocaleString("en-IN")} Footfall`
+                              : "N/A"}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-slate-600">

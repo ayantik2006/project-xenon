@@ -5,6 +5,10 @@ import Hoarding from '@/models/Hoarding';
 import User from '@/models/User';
 import { verifyToken } from '@/lib/jwt';
 import { hoardingSchema } from '@/lib/validators/hoarding';
+import {
+  getPlatformPricingSettings,
+  withBuyerFacingPricing,
+} from "@/lib/platformPricing";
 
 export async function GET(req: Request) {
   try {
@@ -43,6 +47,7 @@ export async function GET(req: Request) {
 
     // 2. Public View: Fetch approved listings (with search)
     const query: any = { status: 'approved' }; // Default to showing only approved
+    let viewerRole: string | null = null;
 
     // Check if admin is requesting to show all (Optional future enhancement)
     const cookieStore = await cookies();
@@ -54,7 +59,10 @@ export async function GET(req: Request) {
         if (payload) {
           const user = await User.findById(payload.userId);
           if (user && (user.role === 'admin' || user.role === 'vendor')) {
+            viewerRole = user.role;
             delete query.status; // Show all to admin or (filtered by owner for vendor - TODO)
+          } else if (user) {
+            viewerRole = user.role;
           }
         }
       } catch (e) {
@@ -71,8 +79,15 @@ export async function GET(req: Request) {
     }
 
     const hoardings = await Hoarding.find(query).sort({ createdAt: -1 }).populate('owner', 'name email image');
+    const settings = await getPlatformPricingSettings();
+    const serializedHoardings = hoardings.map((hoarding) => {
+      const plainHoarding = hoarding.toObject();
+      return viewerRole === "admin" || viewerRole === "vendor"
+        ? plainHoarding
+        : withBuyerFacingPricing(plainHoarding, settings);
+    });
 
-    return NextResponse.json({ hoardings });
+    return NextResponse.json({ hoardings: serializedHoardings, pricingSettings: settings });
 
   } catch (error) {
     console.error("Fetch Hoardings Error:", error);
@@ -128,6 +143,10 @@ export async function POST(req: Request) {
       lightingType: data.lightingType,
       pricePerMonth: data.pricePerMonth,
       minimumBookingAmount: data.minimumBookingAmount || 0,
+      hoardingCode: data.hoardingCode,
+      trafficFrom: data.trafficFrom,
+      uniqueReach: data.uniqueReach,
+      uniqueFootfall: data.uniqueFootfall,
       images: data.images || [],
       owner: user._id,
       status: 'approved' // Auto-publish immediately

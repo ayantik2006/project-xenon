@@ -26,6 +26,7 @@ export interface IHoarding extends Document {
   owner: mongoose.Types.ObjectId;
   status: 'pending' | 'approved' | 'rejected';
   uniqueReach?: number;
+  uniqueFootfall?: number;
   hoardingCode?: string;
   trafficFrom?: string;
   structureType?: string;
@@ -76,6 +77,7 @@ const HoardingSchema: Schema<IHoarding> = new Schema({
     default: 'approved'
   },
   uniqueReach: { type: Number },
+  uniqueFootfall: { type: Number },
   hoardingCode: { type: String },
   trafficFrom: { type: String },
   structureType: { type: String },

@@ -26,16 +26,20 @@ import {
   User,
   ExternalLink,
   Filter,
-  Download,
   MoreVertical,
   XCircle,
   X,
   Bell,
+  CalendarDays,
 } from "lucide-react";
 
 interface Hoarding {
   _id: string;
   name: string;
+  hoardingCode?: string;
+  trafficFrom?: string;
+  uniqueReach?: number;
+  uniqueFootfall?: number;
   location: {
     address: string;
     city: string;
@@ -71,11 +75,25 @@ interface Booking {
   createdAt: string;
 }
 
+type BlockedRange = {
+  startDate: string;
+  endDate: string;
+  type: "booking" | "manual";
+  reason?: string;
+};
+
+const CITY_OPTIONS = [
+  "Bhubaneswar",
+  "Cuttack",
+  "Rourkela",
+];
+
 export default function VendorDashboard() {
   const router = useRouter();
   const [hoardings, setHoardings] = useState<Hoarding[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [activeTab, setActiveTab] = useState<"dashboard" | "listings" | "sold" | "chat">("dashboard");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [errorObj, setErrorObj] = useState<{ status: number; text: string } | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -83,6 +101,29 @@ export default function VendorDashboard() {
     isOpen: false, hoardingId: null, hoardingName: "" 
   });
   const [deleting, setDeleting] = useState(false);
+  const [availabilityModal, setAvailabilityModal] = useState<{
+    isOpen: boolean;
+    hoardingId: string | null;
+    hoardingName: string;
+    startDate: string;
+    endDate: string;
+    reason: string;
+    blockedRanges: BlockedRange[];
+    loading: boolean;
+    saving: boolean;
+    error: string;
+  }>({
+    isOpen: false,
+    hoardingId: null,
+    hoardingName: "",
+    startDate: "",
+    endDate: "",
+    reason: "",
+    blockedRanges: [],
+    loading: false,
+    saving: false,
+    error: "",
+  });
   const [userData, setUserData] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
@@ -102,6 +143,10 @@ export default function VendorDashboard() {
     type: "Billboard",
     lightingType: "Lit",
     pricePerMonth: 0,
+    hoardingCode: "",
+    trafficFrom: "",
+    uniqueReach: 0,
+    uniqueFootfall: 0,
     images: [""]
   });
   const [pincodeLoading, setPincodeLoading] = useState(false);
@@ -109,6 +154,8 @@ export default function VendorDashboard() {
   const [uploading, setUploading] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const canAddHoarding =
+    userData?.kycStatus === "approved" || userData?.kycStatus === "verified";
 
   const getMessageParty = (
     party?: string | { _id: string; role?: string; name?: string } | null,
@@ -376,7 +423,9 @@ export default function VendorDashboard() {
         images: newHoarding.images.filter((url: string) => url.trim() !== ""),
         width: Number(newHoarding.width),
         height: Number(newHoarding.height),
-        pricePerMonth: Number(newHoarding.pricePerMonth)
+        pricePerMonth: Number(newHoarding.pricePerMonth),
+        uniqueReach: Number(newHoarding.uniqueReach) || 0,
+        uniqueFootfall: Number(newHoarding.uniqueFootfall) || 0,
       };
 
       const res = await fetchWithAuth("/api/hoardings", {
@@ -402,6 +451,10 @@ export default function VendorDashboard() {
           type: "Billboard",
           lightingType: "Lit",
           pricePerMonth: 0,
+          hoardingCode: "",
+          trafficFrom: "",
+          uniqueReach: 0,
+          uniqueFootfall: 0,
           images: [""]
         });
       } else {
@@ -434,6 +487,190 @@ export default function VendorDashboard() {
       setDeleting(false);
     }
   };
+
+  const openAddHoardingModal = () => {
+    if (!canAddHoarding) return;
+    setIsAddModalOpen(true);
+  };
+
+  const openAvailabilityModal = async (hoarding: Hoarding) => {
+    setAvailabilityModal({
+      isOpen: true,
+      hoardingId: hoarding._id,
+      hoardingName: hoarding.name,
+      startDate: "",
+      endDate: "",
+      reason: "",
+      blockedRanges: [],
+      loading: true,
+      saving: false,
+      error: "",
+    });
+
+    try {
+      const res = await fetchWithAuth(`/api/hoardings/${hoarding._id}/availability`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load availability");
+      }
+
+      setAvailabilityModal((prev) => ({
+        ...prev,
+        blockedRanges: data.blockedRanges || [],
+        loading: false,
+      }));
+    } catch (error: any) {
+      setAvailabilityModal((prev) => ({
+        ...prev,
+        loading: false,
+        error: error.message || "Failed to load availability",
+      }));
+    }
+  };
+
+  const closeAvailabilityModal = () => {
+    setAvailabilityModal({
+      isOpen: false,
+      hoardingId: null,
+      hoardingName: "",
+      startDate: "",
+      endDate: "",
+      reason: "",
+      blockedRanges: [],
+      loading: false,
+      saving: false,
+      error: "",
+    });
+  };
+
+  const handleBlockDates = async () => {
+    if (!availabilityModal.hoardingId) return;
+    if (!availabilityModal.startDate || !availabilityModal.endDate) {
+      setAvailabilityModal((prev) => ({
+        ...prev,
+        error: "Please select both start and end dates.",
+      }));
+      return;
+    }
+
+    setAvailabilityModal((prev) => ({ ...prev, saving: true, error: "" }));
+
+    try {
+      const res = await fetchWithAuth(
+        `/api/hoardings/${availabilityModal.hoardingId}/availability`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            startDate: availabilityModal.startDate,
+            endDate: availabilityModal.endDate,
+            reason: availabilityModal.reason,
+          }),
+        },
+      );
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to block dates");
+      }
+
+      setAvailabilityModal((prev) => ({
+        ...prev,
+        startDate: "",
+        endDate: "",
+        reason: "",
+        saving: false,
+        blockedRanges: [...prev.blockedRanges, data.blockedRange],
+      }));
+    } catch (error: any) {
+      setAvailabilityModal((prev) => ({
+        ...prev,
+        saving: false,
+        error: error.message || "Failed to block dates",
+      }));
+    }
+  };
+
+  const handleRemoveBlockedRange = async (range: BlockedRange) => {
+    if (!availabilityModal.hoardingId) return;
+
+    setAvailabilityModal((prev) => ({ ...prev, saving: true, error: "" }));
+
+    try {
+      const res = await fetchWithAuth(
+        `/api/hoardings/${availabilityModal.hoardingId}/availability`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            startDate: range.startDate,
+            endDate: range.endDate,
+          }),
+        },
+      );
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to remove blocked dates");
+      }
+
+      setAvailabilityModal((prev) => ({
+        ...prev,
+        saving: false,
+        blockedRanges: prev.blockedRanges.filter(
+          (item) =>
+            !(
+              item.type === "manual" &&
+              item.startDate === range.startDate &&
+              item.endDate === range.endDate
+            ),
+        ),
+      }));
+    } catch (error: any) {
+      setAvailabilityModal((prev) => ({
+        ...prev,
+        saving: false,
+        error: error.message || "Failed to remove blocked dates",
+      }));
+    }
+  };
+
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredHoardings = hoardings.filter((hoarding) => {
+    if (!normalizedSearchQuery) return true;
+
+    return [
+      hoarding.name,
+      hoarding.location.address,
+      hoarding.location.city,
+      hoarding.status,
+      String(hoarding.pricePerMonth ?? ""),
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(normalizedSearchQuery);
+  });
+
+  const filteredBookings = bookings.filter((booking) => {
+    if (!normalizedSearchQuery) return true;
+
+    return [
+      booking.orderId,
+      booking.paymentId ?? "",
+      booking.status,
+      booking.user?.name ?? "",
+      booking.user?.email ?? "",
+      booking.user?.phone ?? "",
+      booking.hoarding?.name ?? "",
+      booking.hoarding?.location.city ?? "",
+      booking.hoarding?.location.address ?? "",
+      String(booking.totalAmount ?? ""),
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(normalizedSearchQuery);
+  });
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -471,14 +708,6 @@ export default function VendorDashboard() {
           />
         </nav>
 
-        <div className="w-full mt-auto pt-4 border-t border-gray-100">
-          <button 
-            onClick={() => router.push("/vendor/add-hoarding")}
-            className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
-          >
-            <PlusCircle size={18} /> New Hoarding
-          </button>
-        </div>
       </aside>
 
       {/* Main Content Area */}
@@ -493,6 +722,8 @@ export default function VendorDashboard() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500 transition-colors" size={16} />
               <input 
                 type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search listings, locations, orders..." 
                 className="w-full pl-10 pr-4 py-2 bg-white border-2 border-blue-500 rounded-none text-sm focus:ring-4 focus:ring-blue-500/10 outline-none text-slate-900 font-bold placeholder-slate-400 transition-all"
               />
@@ -500,6 +731,20 @@ export default function VendorDashboard() {
           </div>
 
           <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={openAddHoardingModal}
+              disabled={!canAddHoarding}
+              title={
+                canAddHoarding
+                  ? "Add a new hoarding"
+                  : "KYC verification is required to add a hoarding"
+              }
+              className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:shadow-none"
+            >
+              <PlusCircle size={16} />
+              Add Hoarding
+            </button>
             <div className="relative" ref={notificationRef}>
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
@@ -589,9 +834,16 @@ export default function VendorDashboard() {
 
         {/* Dynamic Views */}
         <div className="p-8 pb-12 max-w-7xl mx-auto">
-          {activeTab === "dashboard" && <Overview bookings={bookings} hoardings={hoardings} setActiveTab={setActiveTab} setIsAddModalOpen={setIsAddModalOpen} />}
-          {activeTab === "listings" && <Listings hoardings={hoardings} setHoardings={setHoardings} setDeleteModal={setDeleteModal} setIsAddModalOpen={setIsAddModalOpen} />}
-          {activeTab === "sold" && <SoldBookings bookings={bookings} />}
+          {activeTab === "dashboard" && <Overview bookings={filteredBookings} hoardings={filteredHoardings} setActiveTab={setActiveTab} />}
+          {activeTab === "listings" && (
+            <Listings
+              hoardings={filteredHoardings}
+              setHoardings={setHoardings}
+              setDeleteModal={setDeleteModal}
+              openAvailabilityModal={openAvailabilityModal}
+            />
+          )}
+          {activeTab === "sold" && <SoldBookings bookings={filteredBookings} />}
           {activeTab === "chat" && <ChatBox messages={messages} onSend={handleSendMessage} userData={userData} loading={chatLoading} />}
         </div>
       </main>
@@ -695,13 +947,32 @@ export default function VendorDashboard() {
                     </div>
                     <div className="space-y-2">
                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">City</label>
-                       <input 
+                       <select
                         required
-                        type="text" 
                         className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none font-bold text-gray-700"
                         value={newHoarding.city}
-                        onChange={(e) => setNewHoarding({...newHoarding, city: e.target.value})}
-                       />
+                        onChange={(e) => {
+                          const selectedCity = e.target.value;
+                          setNewHoarding({
+                            ...newHoarding,
+                            city: selectedCity,
+                            state:
+                              CITY_OPTIONS.includes(selectedCity) &&
+                              !newHoarding.state.trim()
+                                ? "Odisha"
+                                : newHoarding.state,
+                          });
+                        }}
+                       >
+                         <option value="" disabled>
+                           Select city
+                         </option>
+                         {CITY_OPTIONS.map((city) => (
+                           <option key={city} value={city}>
+                             {city}, Odisha
+                           </option>
+                         ))}
+                       </select>
                     </div>
                   </div>
 
@@ -786,6 +1057,82 @@ export default function VendorDashboard() {
                    </div>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
+                      Property Code
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Optional code"
+                      className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none font-bold text-gray-700"
+                      value={newHoarding.hoardingCode}
+                      onChange={(e) =>
+                        setNewHoarding({
+                          ...newHoarding,
+                          hoardingCode: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
+                      Traffic From
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Main road, market, highway..."
+                      className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none font-bold text-gray-700"
+                      value={newHoarding.trafficFrom}
+                      onChange={(e) =>
+                        setNewHoarding({
+                          ...newHoarding,
+                          trafficFrom: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
+                      Unique Traffic / Week
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Optional"
+                      className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none font-bold text-gray-700"
+                      value={newHoarding.uniqueReach}
+                      onChange={(e) =>
+                        setNewHoarding({
+                          ...newHoarding,
+                          uniqueReach: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
+                      Unique Footfall / Week
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Optional"
+                      className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none font-bold text-gray-700"
+                      value={newHoarding.uniqueFootfall}
+                      onChange={(e) =>
+                        setNewHoarding({
+                          ...newHoarding,
+                          uniqueFootfall: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-4">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 block">Property Images (Upload)</label>
                   {newHoarding.images.map((url: string, index: number) => (
@@ -856,6 +1203,152 @@ export default function VendorDashboard() {
                    </button>
                 </div>
              </form>
+          </div>
+        </div>
+      )}
+
+      {availabilityModal.isOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-100 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 animate-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">
+                  Block Listing Dates
+                </h3>
+                <p className="text-gray-500 mt-1">
+                  Manage unavailable dates for{" "}
+                  <span className="font-bold text-gray-800">
+                    {availabilityModal.hoardingName}
+                  </span>
+                </p>
+              </div>
+              <button
+                onClick={closeAvailabilityModal}
+                className="p-2 rounded-xl bg-gray-50 text-gray-500 hover:bg-gray-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={availabilityModal.startDate}
+                  onChange={(e) =>
+                    setAvailabilityModal((prev) => ({
+                      ...prev,
+                      startDate: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:ring-2 focus:ring-[#2563eb]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  min={availabilityModal.startDate || undefined}
+                  value={availabilityModal.endDate}
+                  onChange={(e) =>
+                    setAvailabilityModal((prev) => ({
+                      ...prev,
+                      endDate: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:ring-2 focus:ring-[#2563eb]"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Reason
+              </label>
+              <input
+                type="text"
+                placeholder="Optional reason for blocking"
+                value={availabilityModal.reason}
+                onChange={(e) =>
+                  setAvailabilityModal((prev) => ({
+                    ...prev,
+                    reason: e.target.value,
+                  }))
+                }
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:ring-2 focus:ring-[#2563eb]"
+              />
+            </div>
+
+            {availabilityModal.error && (
+              <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+                {availabilityModal.error}
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={handleBlockDates}
+                disabled={availabilityModal.loading || availabilityModal.saving}
+                className="px-5 py-3 rounded-xl bg-[#2563eb] text-white font-semibold hover:bg-blue-700 disabled:opacity-50"
+              >
+                {availabilityModal.saving ? "Saving..." : "Block Dates"}
+              </button>
+            </div>
+
+            <div className="mt-8">
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">
+                Existing Unavailable Dates
+              </h4>
+              <div className="space-y-3">
+                {availabilityModal.loading ? (
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-6 text-sm text-gray-500 flex items-center gap-3">
+                    <Loader2 size={18} className="animate-spin" />
+                    Loading availability...
+                  </div>
+                ) : availabilityModal.blockedRanges.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-gray-200 px-4 py-8 text-center text-sm font-medium text-gray-400">
+                    No blocked or booked dates yet
+                  </div>
+                ) : (
+                  availabilityModal.blockedRanges.map((range) => (
+                    <div
+                      key={`${range.type}-${range.startDate}-${range.endDate}`}
+                      className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-4 flex items-center justify-between gap-4"
+                    >
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">
+                          {new Date(range.startDate).toLocaleDateString()} -{" "}
+                          {new Date(range.endDate).toLocaleDateString()}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {range.type === "booking"
+                            ? "Booked by a buyer"
+                            : range.reason || "Blocked by vendor"}
+                        </p>
+                      </div>
+                      {range.type === "manual" ? (
+                        <button
+                          onClick={() => handleRemoveBlockedRange(range)}
+                          disabled={availabilityModal.saving}
+                          className="px-4 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      ) : (
+                        <span className="px-4 py-2 rounded-xl bg-white text-xs font-semibold text-gray-500">
+                          Locked
+                        </span>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -932,18 +1425,45 @@ function MetricCard({ title, value, subtext, type = "default" }: { title: string
   );
 }
 
-function Overview({ bookings, hoardings, setActiveTab, setIsAddModalOpen }: { bookings: Booking[]; hoardings: Hoarding[]; setActiveTab: (t: any) => void; setIsAddModalOpen: (o: boolean) => void }) {
-  const revenue = bookings.filter(b => b.status === "confirmed").reduce((sum, b) => sum + b.totalAmount, 0);
-  
+function Overview({ bookings, hoardings, setActiveTab }: { bookings: Booking[]; hoardings: Hoarding[]; setActiveTab: (t: any) => void }) {
+  const currentYear = new Date().getFullYear();
+  const confirmedBookings = bookings.filter((booking) => booking.status === "confirmed");
+  const pendingBookings = bookings.filter((booking) => booking.status === "pending");
+  const approvedListings = hoardings.filter((hoarding) => hoarding.status === "approved").length;
+  const pendingListings = hoardings.filter((hoarding) => hoarding.status === "pending").length;
+  const revenue = confirmedBookings.reduce((sum, booking) => sum + booking.totalAmount, 0);
+  const recentBookings = [...bookings]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 3);
+  const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthlyRevenue = Array.from({ length: 12 }, (_, monthIndex) =>
+    confirmedBookings
+      .filter((booking) => {
+        const bookingDate = new Date(booking.createdAt);
+        return bookingDate.getFullYear() === currentYear && bookingDate.getMonth() === monthIndex;
+      })
+      .reduce((sum, booking) => sum + booking.totalAmount, 0),
+  );
+  const maxRevenue = Math.max(...monthlyRevenue, 1);
+  const chartPoints = monthlyRevenue.map((value, index) => {
+    const x = 50 + index * (700 / 11);
+    const y = 170 - (value / maxRevenue) * 120;
+    return { x, y };
+  });
+  const chartLine = chartPoints
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .join(" ");
+  const chartArea = `${chartLine} L ${chartPoints[chartPoints.length - 1]?.x ?? 750} 200 L ${chartPoints[0]?.x ?? 50} 200 Z`;
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
       {/* Removed Welcome Section */}
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <MetricCard title="Revenue" value={`₹${revenue.toLocaleString()}`} subtext="ROI: 12x" type="revenue" />
-        <MetricCard title="Active Listings" value={hoardings.length.toString()} subtext="2 pending approval" />
-        <MetricCard title="Confirmed Bookings" value={bookings.filter(b => b.status === "confirmed").length.toString()} subtext="View details" />
+        <MetricCard title="Revenue" value={`₹${revenue.toLocaleString()}`} subtext={`${confirmedBookings.length} confirmed bookings`} type="revenue" />
+        <MetricCard title="Active Listings" value={approvedListings.toString()} subtext={pendingListings > 0 ? `${pendingListings} pending approval` : "No listings pending approval"} />
+        <MetricCard title="Confirmed Bookings" value={confirmedBookings.length.toString()} subtext={pendingBookings.length > 0 ? `${pendingBookings.length} pending bookings` : "No pending bookings"} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -952,16 +1472,10 @@ function Overview({ bookings, hoardings, setActiveTab, setIsAddModalOpen }: { bo
           <div className="flex justify-between items-center mb-8">
             <div>
               <h3 className="text-lg font-bold text-gray-800">Metrics Comparison</h3>
-              <p className="text-xs text-gray-400 font-medium">Revenue vs Month (2025)</p>
+              <p className="text-xs text-gray-400 font-medium">Confirmed revenue by month ({currentYear})</p>
             </div>
-            <div className="flex gap-2">
-              <select className="px-3 py-1.5 bg-gray-50 border-none rounded-lg text-[11px] font-bold text-gray-500 outline-none">
-                <option>Year 2025</option>
-                <option>Year 2024</option>
-              </select>
-              <button className="px-3 py-1.5 bg-gray-50 text-gray-500 rounded-lg text-[11px] font-bold flex items-center gap-1 hover:bg-gray-100">
-                <Download size={14} /> Download
-              </button>
+            <div className="px-3 py-1.5 bg-gray-50 rounded-lg text-[11px] font-bold text-gray-500">
+              Total ₹{revenue.toLocaleString()}
             </div>
           </div>
           
@@ -969,7 +1483,7 @@ function Overview({ bookings, hoardings, setActiveTab, setIsAddModalOpen }: { bo
           <div className="h-64 w-full mt-10 relative group">
              <svg viewBox="0 0 800 200" className="w-full h-full">
                <path 
-                d="M 50 150 Q 150 140, 200 80 T 350 100 T 500 40 T 650 90 T 750 40" 
+                d={chartLine}
                 fill="none" 
                 stroke="#2563eb" 
                 strokeWidth="4"
@@ -977,7 +1491,7 @@ function Overview({ bookings, hoardings, setActiveTab, setIsAddModalOpen }: { bo
                 className="drop-shadow-lg"
                />
                <path 
-                d="M 50 150 Q 150 140, 200 80 T 350 100 T 500 40 T 650 90 T 750 40 L 750 200 L 50 200 Z" 
+                d={chartArea}
                 fill="url(#gradient)" 
                 opacity="0.1"
                />
@@ -987,40 +1501,33 @@ function Overview({ bookings, hoardings, setActiveTab, setIsAddModalOpen }: { bo
                    <stop offset="100%" stopColor="transparent" />
                  </linearGradient>
                </defs>
-               {/* Points */}
-               <circle cx="200" cy="80" r="4" fill="white" stroke="#2563eb" strokeWidth="2" />
-               <circle cx="350" cy="100" r="4" fill="white" stroke="#2563eb" strokeWidth="2" />
-               <circle cx="500" cy="40" r="4" fill="white" stroke="#2563eb" strokeWidth="2" />
-               <circle cx="750" cy="40" r="4" fill="white" stroke="#2563eb" strokeWidth="2" />
-             </svg>
-             <div className="absolute bottom-0 left-0 right-0 flex justify-between px-10 text-[10px] font-bold text-gray-400 mt-4">
-               <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
-             </div>
+               {chartPoints.map((point, index) => (
+                 <circle key={monthLabels[index]} cx={point.x} cy={point.y} r="4" fill="white" stroke="#2563eb" strokeWidth="2" />
+               ))}
+              </svg>
+              <div className="absolute bottom-0 left-0 right-0 flex justify-between px-10 text-[10px] font-bold text-gray-400 mt-4">
+                {monthLabels.map((label) => (
+                  <span key={label}>{label}</span>
+                ))}
+              </div>
           </div>
         </div>
 
-        {/* Recent Inquiries */}
         <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-bold text-gray-800">Quick Actions</h3>
-            <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded">52 INQUIRIES</span>
+            <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded">{bookings.length} BOOKINGS</span>
           </div>
           
           <div className="space-y-2 mb-8">
-            <button 
-              onClick={() => setIsAddModalOpen(true)}
-              className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-xs hover:bg-blue-700 transition-all shadow-md shadow-blue-50 mb-2"
-            >
-              Add Listing
-            </button>
-            <button className="w-full py-3 bg-white text-gray-700 border border-gray-100 rounded-xl font-bold text-xs hover:bg-gray-50 transition-all">
-              New Booking Enquiry
+            <button onClick={() => setActiveTab("chat")} className="w-full py-3 bg-white text-gray-700 border border-gray-100 rounded-xl font-bold text-xs hover:bg-gray-50 transition-all">
+              Open Support Chat
             </button>
           </div>
 
           <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Recent Bookings</h4>
           <div className="space-y-4">
-            {bookings.slice(0, 3).map((b, i) => (
+            {recentBookings.map((b, i) => (
               <div key={i} className="flex items-center justify-between p-3 rounded-2xl hover:bg-gray-50 transition-colors group">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
@@ -1036,6 +1543,11 @@ function Overview({ bookings, hoardings, setActiveTab, setIsAddModalOpen }: { bo
                 </button>
               </div>
             ))}
+            {recentBookings.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-gray-200 px-4 py-8 text-center text-sm font-medium text-gray-400">
+                No bookings yet
+              </div>
+            )}
             <button 
               onClick={() => setActiveTab("sold")}
               className="w-full py-2.5 text-center text-[11px] font-black text-gray-400 hover:text-blue-600 transition-colors uppercase tracking-widest mt-2"
@@ -1049,7 +1561,7 @@ function Overview({ bookings, hoardings, setActiveTab, setIsAddModalOpen }: { bo
   );
 }
 
-function Listings({ hoardings, setHoardings, setDeleteModal, setIsAddModalOpen }: any) {
+function Listings({ hoardings, setHoardings, setDeleteModal, openAvailabilityModal }: any) {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center mb-8">
@@ -1058,12 +1570,6 @@ function Listings({ hoardings, setHoardings, setDeleteModal, setIsAddModalOpen }
           <p className="text-sm text-gray-500 font-medium">Manage and monitor all your listed hoardings.</p>
         </div>
         <div className="flex gap-2">
-          <button 
-           onClick={() => setIsAddModalOpen(true)}
-           className="px-4 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-xs hover:bg-blue-700 transition-all shadow-lg flex items-center gap-2"
-          >
-            <PlusCircle size={16} /> Add Hoarding
-          </button>
           <button className="p-2.5 bg-white border border-gray-100 rounded-xl text-gray-500 hover:bg-gray-50 shadow-sm">
             <Filter size={18} />
           </button>
@@ -1107,6 +1613,13 @@ function Listings({ hoardings, setHoardings, setDeleteModal, setIsAddModalOpen }
                      <p className="text-lg font-black text-blue-600">₹{item.pricePerMonth?.toLocaleString()}</p>
                    </div>
                    <div className="flex gap-2">
+                     <button
+                       onClick={() => openAvailabilityModal(item)}
+                       className="p-2.5 bg-gray-50 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
+                       title="Block listing dates"
+                     >
+                       <CalendarDays size={18} />
+                     </button>
                      <Link href={`/vendor/edit-hoarding/${item._id}`} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
                        <Edit size={18} />
                      </Link>

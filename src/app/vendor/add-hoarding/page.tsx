@@ -72,6 +72,10 @@ export default function AddHoardingPage() {
       lightingType: "Non-Lit", // Default
       type: "Billboard",
       images: [],
+      hoardingCode: "",
+      trafficFrom: "",
+      uniqueReach: 0,
+      uniqueFootfall: 0,
     },
   });
 
@@ -530,6 +534,52 @@ export default function AddHoardingPage() {
                       {errors.pricePerMonth.message}
                     </p>
                   )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Property Code
+                  </label>
+                  <input
+                    {...register("hoardingCode")}
+                    type="text"
+                    placeholder="Optional code"
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Traffic From
+                  </label>
+                  <input
+                    {...register("trafficFrom")}
+                    type="text"
+                    placeholder="Main road, junction, market..."
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Unique Traffic Data / Week
+                  </label>
+                  <input
+                    {...register("uniqueReach", { valueAsNumber: true })}
+                    type="number"
+                    min="0"
+                    placeholder="Optional"
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Unique Footfall Data / Week
+                  </label>
+                  <input
+                    {...register("uniqueFootfall", { valueAsNumber: true })}
+                    type="number"
+                    min="0"
+                    placeholder="Optional"
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
+                  />
                 </div>
 
                 {/* Minimum Booking Amount */}

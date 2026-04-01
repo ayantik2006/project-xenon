@@ -5,6 +5,10 @@ import Booking from '@/models/Booking';
 import Hoarding from '@/models/Hoarding';
 import { razorpay } from '@/lib/razorpay';
 import { verifyAccessToken } from '@/lib/jwt';
+import {
+  calculateCampaignPricing,
+  getPlatformPricingSettings,
+} from "@/lib/platformPricing";
 
 export async function POST(req: Request) {
   try {
@@ -83,12 +87,13 @@ export async function POST(req: Request) {
        return NextResponse.json({ error: "Selected dates are temporarily held for another user's checkout. Try again in 10 minutes." }, { status: 400 });
     }
 
-    const vendorBaseAmount = Math.ceil((hoarding.pricePerMonth / 30) * diffDays);
-    const commission = vendorBaseAmount * 0.20;
-    const subtotal = vendorBaseAmount + commission;
-    const gatewayCharges = subtotal * 0.025;
-    const gst = subtotal * 0.025;
-    const amount = Math.ceil(subtotal + gatewayCharges + gst);
+    const settings = await getPlatformPricingSettings();
+    const pricing = calculateCampaignPricing(
+      hoarding.pricePerMonth,
+      diffDays,
+      settings,
+    );
+    const amount = pricing.totalAmount;
 
     const minAmount = hoarding.minimumBookingAmount || 0;
     if (amount < minAmount) {
@@ -112,8 +117,8 @@ export async function POST(req: Request) {
       startDate: new Date(startDate),
       endDate: new Date(endDate),
       totalAmount: amount,
-      platformFee: Math.ceil(commission + gatewayCharges + gst),
-      vendorAmount: vendorBaseAmount,
+      platformFee: pricing.platformFee,
+      vendorAmount: pricing.vendorBaseAmount,
       status: 'pending',
       orderId: order.id
     });

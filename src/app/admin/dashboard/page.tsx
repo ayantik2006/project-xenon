@@ -115,6 +115,12 @@ interface Booking {
   createdAt: string;
 }
 
+type PlatformSettings = {
+  hoardspaceCommissionPercent: number;
+  razorpayPercent: number;
+  gstPercent: number;
+};
+
 type TabType = "overview" | "users" | "hoardings" | "payments" | "messages";
 
 export default function AdminDashboard() {
@@ -128,6 +134,11 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [hoardings, setHoardings] = useState<Hoarding[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [platformSettings, setPlatformSettings] =
+    useState<PlatformSettings | null>(null);
+  const [commissionInput, setCommissionInput] = useState("0");
+  const [platformSettingsLoading, setPlatformSettingsLoading] = useState(false);
+  const [platformSettingsSaving, setPlatformSettingsSaving] = useState(false);
 
   // Filter states
   const [userRoleFilter, setUserRoleFilter] = useState<string>("");
@@ -214,6 +225,7 @@ export default function AdminDashboard() {
     };
 
     fetchStatsData();
+    fetchPlatformSettings();
 
     // Polling for messages
     const pollInterval = setInterval(() => {
@@ -222,6 +234,53 @@ export default function AdminDashboard() {
 
     return () => clearInterval(pollInterval);
   }, [authChecked]);
+
+  const fetchPlatformSettings = async () => {
+    setPlatformSettingsLoading(true);
+    try {
+      const res = await fetchWithAuth("/api/admin/platform-settings");
+      if (res.ok) {
+        const data = await res.json();
+        setPlatformSettings(data.settings);
+        setCommissionInput(
+          String(data.settings?.hoardspaceCommissionPercent ?? 0),
+        );
+      }
+    } catch (error) {
+      console.error("Failed to fetch platform settings", error);
+    } finally {
+      setPlatformSettingsLoading(false);
+    }
+  };
+
+  const handleSavePlatformSettings = async () => {
+    setPlatformSettingsSaving(true);
+    try {
+      const res = await fetchWithAuth("/api/admin/platform-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hoardspaceCommissionPercent: Number(commissionInput || 0),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Failed to update platform settings");
+        return;
+      }
+
+      setPlatformSettings(data.settings);
+      setCommissionInput(
+        String(data.settings?.hoardspaceCommissionPercent ?? 0),
+      );
+    } catch (error) {
+      console.error("Failed to save platform settings", error);
+      alert("Failed to update platform settings");
+    } finally {
+      setPlatformSettingsSaving(false);
+    }
+  };
 
   const fetchAdminMessages = async () => {
     setMessageLoading(true);
@@ -713,14 +772,90 @@ export default function AdminDashboard() {
           <div className="p-6">
             {activeTab === "overview" && (
               <div className="space-y-6">
-                <div className="text-center py-12">
-                  <TrendingUp className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                  <h3 className="text-xl font-bold text-gray-900">
-                    Platform Overview
-                  </h3>
-                  <p className="text-gray-500 mt-2">
-                    Switch to Users or Hoardings tabs to manage the platform
-                  </p>
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                    <h3 className="text-xl font-bold text-gray-900">
+                      Platform Overview
+                    </h3>
+                    <p className="mt-2 text-gray-500">
+                      Switch to Users, Hoardings, Payments, or Messages to
+                      manage day-to-day platform activity.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          Pricing Controls
+                        </h3>
+                        <p className="mt-2 text-sm text-gray-500">
+                          Buyers see vendor price + HoardSpace commission +
+                          Razorpay + GST.
+                        </p>
+                      </div>
+                      {(platformSettingsLoading || platformSettingsSaving) && (
+                        <Loader2 className="animate-spin text-blue-600" size={20} />
+                      )}
+                    </div>
+
+                    <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                      <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
+                          HoardSpace Commission
+                        </p>
+                        <div className="mt-3 flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            value={commissionInput}
+                            onChange={(e) => setCommissionInput(e.target.value)}
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-[#2563eb]"
+                          />
+                          <span className="text-sm font-semibold text-gray-500">
+                            %
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
+                          Razorpay Charges
+                        </p>
+                        <p className="mt-4 text-2xl font-bold text-gray-900">
+                          {platformSettings?.razorpayPercent ?? 2.5}%
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
+                          GST
+                        </p>
+                        <p className="mt-4 text-2xl font-bold text-gray-900">
+                          {platformSettings?.gstPercent ?? 2.5}%
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 flex items-center justify-between gap-4">
+                      <p className="text-xs text-gray-500">
+                        Default commission is currently set to{" "}
+                        <span className="font-bold text-gray-900">
+                          {platformSettings?.hoardspaceCommissionPercent ?? 0}%
+                        </span>
+                        .
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleSavePlatformSettings}
+                        disabled={platformSettingsSaving}
+                        className="rounded-xl bg-[#2563eb] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {platformSettingsSaving ? "Saving..." : "Save Pricing"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1690,7 +1825,7 @@ export default function AdminDashboard() {
                         onClick={async () => {
                           await handleUpdateKYC(
                             userDetailsModal.user!._id,
-                            "submitted",
+                            "not_submitted",
                           );
                           closeUserDetailsModal();
                         }}
@@ -1698,7 +1833,7 @@ export default function AdminDashboard() {
                         className="flex-1 px-6 py-3 bg-yellow-500 text-white rounded-xl font-semibold hover:bg-yellow-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         <AlertTriangle size={18} />
-                        Reopen Review
+                        Reopen For Resubmission
                       </button>
                     </div>
                   )}

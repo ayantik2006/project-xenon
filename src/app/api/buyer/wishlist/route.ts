@@ -4,6 +4,10 @@ import { verifyAccessToken } from "@/lib/jwt";
 import dbConnect from "@/lib/dbConnect";
 import Wishlist from "@/models/Wishlist";
 import Hoarding from "@/models/Hoarding";
+import {
+  getPlatformPricingSettings,
+  withBuyerFacingPricing,
+} from "@/lib/platformPricing";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
 
@@ -26,7 +30,20 @@ export async function GET(req: Request) {
       populate: { path: "owner", select: "name" },
     });
 
-    return NextResponse.json({ wishlist: wishlist || { hoardings: [] } });
+    const settings = await getPlatformPricingSettings();
+    const serializedWishlist = wishlist
+      ? {
+          ...wishlist.toObject(),
+          hoardings: (wishlist.hoardings || []).map((hoarding: any) =>
+            withBuyerFacingPricing(
+              typeof hoarding.toObject === "function" ? hoarding.toObject() : hoarding,
+              settings,
+            ),
+          ),
+        }
+      : { hoardings: [] };
+
+    return NextResponse.json({ wishlist: serializedWishlist, pricingSettings: settings });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

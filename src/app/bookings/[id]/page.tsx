@@ -44,6 +44,8 @@ export default function BookingPage() {
   const [blockedDates, setBlockedDates] = useState<any[]>([]);
   const [dateError, setDateError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [wishlistMsg, setWishlistMsg] = useState("");
+  const [enquiryMsg, setEnquiryMsg] = useState("");
 
   useEffect(() => {
     const start = searchParams.get("start");
@@ -67,19 +69,43 @@ export default function BookingPage() {
     if (id) fetchAvailability();
   }, [id]);
 
+  const getDayStamp = (dateValue: string | Date) => {
+    if (typeof dateValue === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+      const [year, month, day] = dateValue.split("-").map(Number);
+      return Date.UTC(year, month - 1, day);
+    }
+
+    const parsedDate = new Date(dateValue);
+    return Date.UTC(
+      parsedDate.getUTCFullYear(),
+      parsedDate.getUTCMonth(),
+      parsedDate.getUTCDate(),
+    );
+  };
+
+  const isDateBlocked = (dateValue: string) => {
+    const selectedStamp = getDayStamp(dateValue);
+
+    return blockedDates.some((range) => {
+      const blockStart = getDayStamp(range.startDate);
+      const blockEnd = getDayStamp(range.endDate);
+      return selectedStamp >= blockStart && selectedStamp <= blockEnd;
+    });
+  };
+
   const validateDates = (start: string, end: string) => {
     if (!start || !end) return true;
-    const s = new Date(start);
-    const e = new Date(end);
+    const s = getDayStamp(start);
+    const e = getDayStamp(end);
     
     if (s > e) {
       setDateError("Start date cannot be after end date");
       return false;
     }
 
-    const overlap = blockedDates.find(range => {
-      const bStart = new Date(range.startDate);
-      const bEnd = new Date(range.endDate);
+    const overlap = blockedDates.find((range) => {
+      const bStart = getDayStamp(range.startDate);
+      const bEnd = getDayStamp(range.endDate);
       return s <= bEnd && e >= bStart;
     });
 
@@ -90,6 +116,37 @@ export default function BookingPage() {
 
     setDateError("");
     return true;
+  };
+
+  const handleDateInputChange = (type: "start" | "end", value: string) => {
+    if (value && isDateBlocked(value)) {
+      setDateError("That date is unavailable because it is already booked or blocked.");
+      if (type === "start") {
+        setStartDate("");
+      } else {
+        setEndDate("");
+      }
+      return;
+    }
+
+    const nextStart = type === "start" ? value : startDate;
+    const nextEnd = type === "end" ? value : endDate;
+
+    if (nextStart && nextEnd && !validateDates(nextStart, nextEnd)) {
+      if (type === "start") {
+        setStartDate("");
+      } else {
+        setEndDate("");
+      }
+      return;
+    }
+
+    setDateError("");
+    if (type === "start") {
+      setStartDate(value);
+    } else {
+      setEndDate(value);
+    }
   };
 
   useEffect(() => {
@@ -126,24 +183,37 @@ export default function BookingPage() {
   // Pricing Logic
   const calculatePricing = () => {
     if (!hoarding)
-      return { base: 0, commission: 0, gateway: 0, gst: 0, total: 0 };
+      return {
+        base: 0,
+        commission: 0,
+        commissionPercent: 0,
+        gateway: 0,
+        gatewayPercent: 2.5,
+        gst: 0,
+        gstPercent: 2.5,
+        total: 0,
+      };
 
-    const basePrice = hoarding.pricePerMonth;
-    // Markup/Commission (e.g. 20%)
-    const commission = basePrice * 0.2;
+    const basePrice = hoarding.basePricePerMonth || hoarding.pricePerMonth;
+    const commissionPercent =
+      hoarding.pricingConfig?.hoardspaceCommissionPercent || 0;
+    const gatewayPercent = hoarding.pricingConfig?.razorpayPercent || 2.5;
+    const gstPercent = hoarding.pricingConfig?.gstPercent || 2.5;
+    const commission = basePrice * (commissionPercent / 100);
     const subtotal = basePrice + commission;
-    // Razorpay 2.5%
-    const gatewayCharges = subtotal * 0.025;
-    // GST 2.5% (as requested by user)
-    const gst = subtotal * 0.025;
+    const gatewayCharges = subtotal * (gatewayPercent / 100);
+    const gst = subtotal * (gstPercent / 100);
 
     const total = subtotal + gatewayCharges + gst;
 
     return {
       base: basePrice,
       commission,
+      commissionPercent,
       gateway: gatewayCharges,
+      gatewayPercent,
       gst,
+      gstPercent,
       total: Math.round(total),
     };
   };
@@ -151,6 +221,13 @@ export default function BookingPage() {
   const pricing = calculatePricing();
 
   const handlePayment = async () => {
+    if (user?.role !== "buyer") {
+      setError("Only buyers can book hoardings.");
+      setSuccessMsg("");
+      setWishlistMsg("");
+      return;
+    }
+
     if (!startDate || !endDate) {
       setError("Please select campaign dates");
       return;
@@ -208,8 +285,15 @@ export default function BookingPage() {
   };
 
   const addToWishlist = async () => {
+    if (user?.role !== "buyer") {
+      setWishlistMsg("Only buyers can add hoardings to wishlist.");
+      setSuccessMsg("");
+      return;
+    }
+
     setError("");
     setSuccessMsg("");
+    setWishlistMsg("");
     try {
       const res = await fetchWithAuth("/api/buyer/wishlist", {
         method: "POST",
@@ -220,16 +304,24 @@ export default function BookingPage() {
         setSuccessMsg("Added to your wishlist!");
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to add to wishlist");
+        setWishlistMsg(data.error || "Failed to add to wishlist");
       }
     } catch (error) {
-      setError("Failed to add to wishlist");
+      setWishlistMsg("Failed to add to wishlist");
     }
   };
 
   const enquireNow = async () => {
+    if (user?.role !== "buyer") {
+      setEnquiryMsg("Only buyers can enquire about hoardings.");
+      setError("");
+      setSuccessMsg("");
+      return;
+    }
+
     setError("");
     setSuccessMsg("");
+    setEnquiryMsg("");
     try {
       const res = await fetchWithAuth("/api/contact", {
         method: "POST",
@@ -244,10 +336,10 @@ export default function BookingPage() {
       if (res.ok) {
         setSuccessMsg("Inquiry sent to admin!");
       } else {
-        setError("Failed to send inquiry");
+        setEnquiryMsg("Failed to send inquiry");
       }
     } catch (error) {
-      setError("Failed to send inquiry");
+      setEnquiryMsg("Failed to send inquiry");
     }
   };
 
@@ -430,7 +522,9 @@ export default function BookingPage() {
                       type="date"
                       className="w-full pl-12 pr-6 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/10 font-bold text-gray-700"
                       value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
+                      onChange={(e) =>
+                        handleDateInputChange("start", e.target.value)
+                      }
                     />
                   </div>
                 </div>
@@ -449,10 +543,9 @@ export default function BookingPage() {
                       className="w-full pl-12 pr-6 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600/10 font-bold text-gray-700"
                       min={startDate}
                       value={endDate}
-                      onChange={(e) => {
-                        setEndDate(e.target.value);
-                        validateDates(startDate, e.target.value);
-                      }}
+                      onChange={(e) =>
+                        handleDateInputChange("end", e.target.value)
+                      }
                     />
                   </div>
                 </div>
@@ -516,7 +609,7 @@ export default function BookingPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500 font-medium">
-                      Markup & Commission
+                      HoardSpace Commission ({pricing.commissionPercent}%)
                     </span>
                     <span className="text-gray-900 font-black tracking-tight">
                       ₹{pricing.commission.toLocaleString()}
@@ -533,14 +626,16 @@ export default function BookingPage() {
                   </div>
                   <div className="flex justify-between text-sm pt-2">
                     <span className="text-gray-500 font-medium">
-                      Gateway Charges (2.5%)
+                      Razorpay Charges ({pricing.gatewayPercent}%)
                     </span>
                     <span className="text-gray-900 font-black tracking-tight">
                       ₹{pricing.gateway.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500 font-medium">GST (2.5%)</span>
+                    <span className="text-gray-500 font-medium">
+                      GST ({pricing.gstPercent}%)
+                    </span>
                     <span className="text-gray-900 font-black tracking-tight">
                       ₹{pricing.gst.toLocaleString()}
                     </span>
@@ -558,12 +653,22 @@ export default function BookingPage() {
                 </div>
 
                 <div className="space-y-3 pt-6">
+                  {wishlistMsg && (
+                    <div className="p-4 text-xs font-bold rounded-2xl border bg-amber-50 text-amber-700 border-amber-100 animate-in fade-in slide-in-from-top-2">
+                      {wishlistMsg}
+                    </div>
+                  )}
                   <button
                     onClick={addToWishlist}
                     className="w-full flex items-center justify-center gap-3 py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all transition-colors duration-300"
                   >
                     <Heart size={16} /> Add to Wishlist
                   </button>
+                  {enquiryMsg && (
+                    <div className="p-4 text-xs font-bold rounded-2xl border bg-amber-50 text-amber-700 border-amber-100 animate-in fade-in slide-in-from-top-2">
+                      {enquiryMsg}
+                    </div>
+                  )}
                   <button
                     onClick={enquireNow}
                     className="w-full flex items-center justify-center gap-3 py-4 bg-white border border-gray-200 text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:border-blue-600 hover:text-blue-600 transition-all"

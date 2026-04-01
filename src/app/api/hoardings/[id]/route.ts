@@ -5,6 +5,10 @@ import Hoarding from '@/models/Hoarding';
 import User from '@/models/User';
 import { verifyToken } from '@/lib/jwt';
 import { hoardingSchema } from '@/lib/validators/hoarding';
+import {
+  getPlatformPricingSettings,
+  withBuyerFacingPricing,
+} from "@/lib/platformPricing";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
    try {
@@ -17,7 +21,26 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
          return NextResponse.json({ error: "Hoarding not found" }, { status: 404 });
       }
 
-      return NextResponse.json({ hoarding });
+      const cookieStore = await cookies();
+      const token = cookieStore.get("accessToken")?.value;
+      let viewerRole: string | null = null;
+
+      if (token) {
+        const payload = verifyToken(token);
+        if (payload) {
+          const user = await User.findById(payload.userId);
+          viewerRole = user?.role || null;
+        }
+      }
+
+      const settings = await getPlatformPricingSettings();
+      const plainHoarding = hoarding.toObject();
+      const serializedHoarding =
+        viewerRole === "admin" || viewerRole === "vendor"
+          ? plainHoarding
+          : withBuyerFacingPricing(plainHoarding, settings);
+
+      return NextResponse.json({ hoarding: serializedHoarding, pricingSettings: settings });
    } catch (error) {
       return NextResponse.json({ error: "Failed to fetch details" }, { status: 500 });
    }
@@ -84,6 +107,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       hoarding.lightingType = data.lightingType;
       hoarding.pricePerMonth = data.pricePerMonth;
       hoarding.minimumBookingAmount = data.minimumBookingAmount || 0;
+      hoarding.hoardingCode = data.hoardingCode;
+      hoarding.trafficFrom = data.trafficFrom;
+      hoarding.uniqueReach = data.uniqueReach;
+      hoarding.uniqueFootfall = data.uniqueFootfall;
       hoarding.images = data.images || [];
 
       await hoarding.save();

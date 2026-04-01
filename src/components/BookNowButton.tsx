@@ -41,6 +41,13 @@ export default function BookNowButton({
       const normalizedStatus = normalizeKycStatus(user.kycStatus);
       console.log("User logged in:", user);
 
+      if (user.role !== "buyer") {
+        setError("Only buyers can book hoardings. Please use a buyer account.");
+        setTimeout(() => setError(""), 4000);
+        setChecking(false);
+        return;
+      }
+
       // Step 3: Check email verification
       if (!user.emailVerified) {
         setError("Please verify your email first");

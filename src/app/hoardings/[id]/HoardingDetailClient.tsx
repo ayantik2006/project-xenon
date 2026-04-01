@@ -18,8 +18,9 @@ import {
   MessageSquare,
   Loader2
 } from "lucide-react";
-import { GoogleMap, useLoadScript, Marker } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import { useRouter } from "next/navigation";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 interface HoardingDetailClientProps {
   hoarding: any;
@@ -36,10 +37,41 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
   const [selectedDates, setSelectedDates] = useState({ start: "", end: "" });
   const [blockedDates, setBlockedDates] = useState<any[]>([]);
   const [dateError, setDateError] = useState("");
+  const [bookRoleMessage, setBookRoleMessage] = useState("");
+  const [wishlistRoleMessage, setWishlistRoleMessage] = useState("");
+  const [enquiryRoleMessage, setEnquiryRoleMessage] = useState("");
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const browserMapsApiKey =
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || "";
+  const [mapsLoadFailed, setMapsLoadFailed] = useState(false);
+  const basePricePerMonth = hoarding.basePricePerMonth || hoarding.pricePerMonth || 0;
+  const commissionPercent =
+    hoarding.pricingConfig?.hoardspaceCommissionPercent || 0;
+  const razorpayPercent = hoarding.pricingConfig?.razorpayPercent || 2.5;
+  const gstPercent = hoarding.pricingConfig?.gstPercent || 2.5;
+  const approxMonthlyCost =
+    hoarding.pricingBreakdown?.totalPricePerMonth ||
+    Math.ceil(
+      basePricePerMonth +
+        (basePricePerMonth * commissionPercent) / 100 +
+        (basePricePerMonth * razorpayPercent) / 100 +
+        (basePricePerMonth * gstPercent) / 100,
+    );
 
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-  });
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const res = await fetchWithAuth("/api/auth/me");
+        if (!res.ok) return;
+        const data = await res.json();
+        setCurrentUserRole(data.user?.role || null);
+      } catch (error) {
+        console.error("Failed to load current user", error);
+      }
+    };
+
+    fetchCurrentUser();
+  }, []);
 
   useEffect(() => {
     const fetchAvailability = async () => {
@@ -56,19 +88,43 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
     fetchAvailability();
   }, [hoarding._id]);
 
+  const getDayStamp = (dateValue: string | Date) => {
+    if (typeof dateValue === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+      const [year, month, day] = dateValue.split("-").map(Number);
+      return Date.UTC(year, month - 1, day);
+    }
+
+    const parsedDate = new Date(dateValue);
+    return Date.UTC(
+      parsedDate.getUTCFullYear(),
+      parsedDate.getUTCMonth(),
+      parsedDate.getUTCDate(),
+    );
+  };
+
+  const isDateBlocked = (dateValue: string) => {
+    const selectedStamp = getDayStamp(dateValue);
+
+    return blockedDates.some((range) => {
+      const blockStart = getDayStamp(range.startDate);
+      const blockEnd = getDayStamp(range.endDate);
+      return selectedStamp >= blockStart && selectedStamp <= blockEnd;
+    });
+  };
+
   const validateDates = (start: string, end: string) => {
     if (!start || !end) return true;
-    const s = new Date(start);
-    const e = new Date(end);
+    const s = getDayStamp(start);
+    const e = getDayStamp(end);
     
     if (s > e) {
       setDateError("Start date cannot be after end date");
       return false;
     }
 
-    const overlap = blockedDates.find(range => {
-      const bStart = new Date(range.startDate);
-      const bEnd = new Date(range.endDate);
+    const overlap = blockedDates.find((range) => {
+      const bStart = getDayStamp(range.startDate);
+      const bEnd = getDayStamp(range.endDate);
       return s <= bEnd && e >= bStart;
     });
 
@@ -82,15 +138,59 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
   };
 
   const handleDateChange = (type: "start" | "end", value: string) => {
+    if (value && isDateBlocked(value)) {
+      setDateError("That date is unavailable because it is already booked or blocked.");
+      setSelectedDates((prev) => ({ ...prev, [type]: "" }));
+      return;
+    }
+
     const newDates = { ...selectedDates, [type]: value };
+    if (
+      newDates.start &&
+      newDates.end &&
+      !validateDates(newDates.start, newDates.end)
+    ) {
+      setSelectedDates({
+        ...newDates,
+        [type]: "",
+      });
+      return;
+    }
+
+    setDateError("");
     setSelectedDates(newDates);
-    validateDates(newDates.start, newDates.end);
   };
 
   const handleBookNow = () => {
+    if (currentUserRole && currentUserRole !== "buyer") {
+      setBookRoleMessage("Only buyers can book hoardings.");
+      return;
+    }
+
+    setBookRoleMessage("");
     if (!validateDates(selectedDates.start, selectedDates.end)) return;
     const query = new URLSearchParams(selectedDates).toString();
     router.push(`/bookings/${hoarding._id}?${query}`);
+  };
+
+  const handleAddToWishlist = () => {
+    if (currentUserRole && currentUserRole !== "buyer") {
+      setWishlistRoleMessage("Only buyers can add hoardings to wishlist.");
+      return;
+    }
+
+    setWishlistRoleMessage("");
+    router.push(`/bookings/${hoarding._id}`);
+  };
+
+  const handleEnquireNow = () => {
+    if (currentUserRole && currentUserRole !== "buyer") {
+      setEnquiryRoleMessage("Only buyers can enquire about hoardings.");
+      return;
+    }
+
+    setEnquiryRoleMessage("");
+    router.push(`/bookings/${hoarding._id}`);
   };
 
   const handleShare = () => {
@@ -113,10 +213,29 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
     { label: "Traffic From", value: hoarding.trafficFrom || "N/A", icon: Truck },
     { label: "Size (W x H)", value: `${hoarding.dimensions?.width || 0} x ${hoarding.dimensions?.height || 0} Feet`, icon: Maximize },
     { label: "Square Feet", value: `${(hoarding.dimensions?.width || 0) * (hoarding.dimensions?.height || 0)} sq ft`, icon: Maximize },
-    { label: "Traffic Data", value: `${hoarding.uniqueReach || 0} unique reach/ week`, icon: User },
+    {
+      label: "Traffic Data",
+      value: hoarding.uniqueReach
+        ? `${hoarding.uniqueReach} unique reach/ week`
+        : "N/A",
+      icon: User,
+    },
+    {
+      label: "Footfall Data",
+      value: hoarding.uniqueFootfall
+        ? `${hoarding.uniqueFootfall} unique footfall/ week`
+        : "N/A",
+      icon: User,
+    },
     { label: "Structure Type", value: hoarding.structureType || "Hoarding", icon: Maximize },
     { label: "Available", value: hoarding.availabilityStatus || "Immediately", icon: Clock },
   ];
+
+  const locationCoordinates = hoarding.location.coordinates || {
+    lat: 20.2961,
+    lng: 85.8245,
+  };
+  const googleMapsDirectionUrl = `https://www.google.com/maps?q=${locationCoordinates.lat},${locationCoordinates.lng}`;
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -209,6 +328,12 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
                 </div>
               )}
 
+              {bookRoleMessage && (
+                <div className="p-3 bg-amber-50 text-amber-700 text-xs rounded-lg font-medium">
+                  {bookRoleMessage}
+                </div>
+              )}
+
               {blockedDates.length > 0 && (
                 <div className="space-y-2">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Already Booked:</span>
@@ -239,18 +364,34 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
             <div className="space-y-4">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500 font-medium">Approx. Cost:</span>
-                <span className="text-gray-900 font-bold">₹ {hoarding.pricePerMonth?.toLocaleString('en-IN') || '60,000'} / Month</span>
+                <span className="text-gray-900 font-bold">₹ {hoarding.pricePerMonth || '60,000'} / Month</span>
               </div>
-              <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-4">
+              {/* <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-4">
                 <span className="text-gray-500 font-medium">Print & Mount:</span>
                 <span className="text-gray-900 font-bold text-xs uppercase">Additional ₹ 17 / Sq Feet</span>
-              </div>
+              </div> */}
               
               <div className="pt-2 space-y-3">
-                <button className="w-full bg-[#2563eb] text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors">
+                {wishlistRoleMessage && (
+                  <div className="p-3 bg-amber-50 text-amber-700 text-xs rounded-lg font-medium">
+                    {wishlistRoleMessage}
+                  </div>
+                )}
+                <button
+                  onClick={handleAddToWishlist}
+                  className="w-full bg-[#2563eb] text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors"
+                >
                   Add to Wishlist
                 </button>
-                <button className="w-full border border-gray-200 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-50 transition-colors">
+                {enquiryRoleMessage && (
+                  <div className="p-3 bg-amber-50 text-amber-700 text-xs rounded-lg font-medium">
+                    {enquiryRoleMessage}
+                  </div>
+                )}
+                <button
+                  onClick={handleEnquireNow}
+                  className="w-full border border-gray-200 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-50 transition-colors"
+                >
                   Enquire Now
                 </button>
                 <button 
@@ -267,28 +408,49 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 overflow-hidden">
             <h3 className="text-md font-bold text-gray-900 mb-4">Location Map</h3>
             <div className="relative">
-              {!isLoaded ? (
-                <div className="w-full h-[300px] bg-gray-50 rounded-xl flex items-center justify-center">
-                  <Loader2 className="animate-spin text-blue-500" />
-                </div>
-              ) : loadError ? (
-                <div className="w-full h-[300px] bg-red-50 rounded-xl flex items-center justify-center text-red-500 text-sm p-4 text-center">
-                  Failed to load map. Please check your API key.
+              {!browserMapsApiKey || mapsLoadFailed ? (
+                <div className="w-full h-[300px] bg-gray-50 rounded-xl flex flex-col items-center justify-center text-center p-6">
+                  <MapPin className="w-6 h-6 text-[#2563eb] mb-3" />
+                  <p className="text-sm font-semibold text-gray-800">
+                    Interactive map unavailable
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2 max-w-xs">
+                    Add a valid `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` to enable the
+                    embedded map for this listing.
+                  </p>
+                  <a
+                    href={googleMapsDirectionUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 text-sm font-semibold text-[#2563eb] hover:underline"
+                  >
+                    Open location in Google Maps
+                  </a>
                 </div>
               ) : (
-                <GoogleMap
-                  mapContainerStyle={mapContainerStyle}
-                  center={hoarding.location.coordinates || { lat: 20.2961, lng: 85.8245 }}
-                  zoom={15}
-                  options={{
-                    disableDefaultUI: true,
-                    zoomControl: true,
-                  }}
+                <LoadScript
+                  googleMapsApiKey={browserMapsApiKey}
+                  onError={() => setMapsLoadFailed(true)}
+                  loadingElement={
+                    <div className="w-full h-[300px] bg-gray-50 rounded-xl flex items-center justify-center">
+                      <Loader2 className="animate-spin text-blue-500" />
+                    </div>
+                  }
                 >
-                  {hoarding.location.coordinates && (
-                    <Marker position={hoarding.location.coordinates} />
-                  )}
-                </GoogleMap>
+                  <GoogleMap
+                    mapContainerStyle={mapContainerStyle}
+                    center={locationCoordinates}
+                    zoom={15}
+                    options={{
+                      disableDefaultUI: true,
+                      zoomControl: true,
+                    }}
+                  >
+                    {hoarding.location.coordinates && (
+                      <Marker position={hoarding.location.coordinates} />
+                    )}
+                  </GoogleMap>
+                </LoadScript>
               )}
             </div>
           </div>

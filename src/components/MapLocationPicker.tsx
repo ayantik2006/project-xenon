@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { GoogleMap, useLoadScript, Marker } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import { getAddressFromCoordinates } from "@/lib/googleMaps";
 import { MapPin, Loader2 } from "lucide-react";
 
@@ -34,10 +34,8 @@ export default function MapLocationPicker({
   onLocationSelect,
   initialCenter,
 }: MapLocationPickerProps) {
-  // Use public browser key (with HTTP referrer restrictions)
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-  });
+  const browserMapsApiKey =
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || "";
 
   const [markerPosition, setMarkerPosition] = useState<{
     lat: number;
@@ -45,6 +43,7 @@ export default function MapLocationPicker({
   } | null>(initialCenter || null);
   const [mapCenter, setMapCenter] = useState(initialCenter || defaultCenter);
   const [loading, setLoading] = useState(false);
+  const [mapsLoadFailed, setMapsLoadFailed] = useState(false);
 
   const handleMapClick = useCallback(
     async (e: google.maps.MapMouseEvent) => {
@@ -113,22 +112,16 @@ export default function MapLocationPicker({
     );
   };
 
-  if (loadError) {
+  if (!browserMapsApiKey || mapsLoadFailed) {
     return (
       <div className="w-full h-[400px] bg-gray-100 rounded-xl flex items-center justify-center text-gray-500">
         <div className="text-center">
           <MapPin className="mx-auto mb-2" size={32} />
-          <p>Failed to load Google Maps</p>
-          <p className="text-xs mt-1">Please check your API configuration</p>
+          <p>Google Maps is unavailable</p>
+          <p className="text-xs mt-1">
+            Add a valid `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` to enable map pinning.
+          </p>
         </div>
-      </div>
-    );
-  }
-
-  if (!isLoaded) {
-    return (
-      <div className="w-full h-[400px] bg-gray-100 rounded-xl flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#2563eb]" size={32} />
       </div>
     );
   }
@@ -149,25 +142,34 @@ export default function MapLocationPicker({
           {loading ? "Getting location..." : "Use Current Location"}
         </button>
       </div>
-
-      <GoogleMap
-        mapContainerStyle={mapContainerStyle}
-        zoom={markerPosition ? 15 : 5}
-        center={mapCenter}
-        onClick={handleMapClick}
-        options={{
-          streetViewControl: false,
-          mapTypeControl: false,
-          fullscreenControl: false,
-        }}
+      <LoadScript
+        googleMapsApiKey={browserMapsApiKey}
+        onError={() => setMapsLoadFailed(true)}
+        loadingElement={
+          <div className="w-full h-[400px] bg-gray-100 rounded-xl flex items-center justify-center">
+            <Loader2 className="animate-spin text-[#2563eb]" size={32} />
+          </div>
+        }
       >
-        {markerPosition && (
-          <Marker
-            position={markerPosition}
-            animation={google.maps.Animation.DROP}
-          />
-        )}
-      </GoogleMap>
+        <GoogleMap
+          mapContainerStyle={mapContainerStyle}
+          zoom={markerPosition ? 15 : 5}
+          center={mapCenter}
+          onClick={handleMapClick}
+          options={{
+            streetViewControl: false,
+            mapTypeControl: false,
+            fullscreenControl: false,
+          }}
+        >
+          {markerPosition && (
+            <Marker
+              position={markerPosition}
+              animation={google.maps.Animation.DROP}
+            />
+          )}
+        </GoogleMap>
+      </LoadScript>
 
       {markerPosition && (
         <p className="text-xs text-green-600 bg-green-50 px-3 py-2 rounded-lg">

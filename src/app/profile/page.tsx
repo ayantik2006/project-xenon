@@ -108,6 +108,7 @@ export default function ProfilePage() {
           aadhaar: "",
           address: "",
           documents: [],
+          acceptTerms: false as const,
         };
 
         if (data.user.kycDetails) {
@@ -834,7 +835,9 @@ export default function ProfilePage() {
                   Complete Your KYC
                 </h2>
                 <p className="text-sm text-gray-500">
-                  Verify your identity to unlock all features
+                  {displayKycStatus === "rejected"
+                    ? "Your previous KYC was rejected or reopened. Update the details below and submit again."
+                    : "Verify your identity to unlock all features"}
                 </p>
               </div>
             </div>
@@ -934,6 +937,32 @@ export default function ProfilePage() {
                     </p>
                   )}
                 </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                <label className="flex items-center gap-3 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    {...kycForm.register("acceptTerms")}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-[#2563eb] focus:ring-[#2563eb] mb-1"
+                  />
+                  <span>
+                    I accept the{" "}
+                    <Link
+                      href="/terms"
+                      target="_blank"
+                      className="font-semibold text-[#2563eb] hover:underline"
+                    >
+                      Terms and Conditions
+                    </Link>{" "}
+                    for KYC submission.
+                  </span>
+                </label>
+                {kycForm.formState.errors.acceptTerms && (
+                  <p className="mt-2 text-xs text-red-500">
+                    {kycForm.formState.errors.acceptTerms.message}
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-end pt-4">

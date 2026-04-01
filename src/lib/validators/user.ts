@@ -38,6 +38,12 @@ export const kycSchema = z.object({
   aadhaar: z.string().min(12, "Aadhaar is required"), // made required - adding a basic length check, standard is 12
   address: z.string().optional(),
   documents: z.array(z.string().url()).optional(),
+  acceptTerms: z
+    .boolean()
+    .refine(
+      (value) => value,
+      "You must accept the terms and conditions before submitting KYC.",
+    ),
 });
 
 export const profileKycSchema = kycSchema.omit({
