@@ -828,10 +828,7 @@ export default function VendorDashboard() {
         {/* Header */}
         <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-gray-100 px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
-            <h1 className="text-xl font-bold text-gray-800 hidden md:block">
-              {activeTab === "dashboard" ? "Vendor Overview" : activeTab === "listings" ? "Hoarding Inventory" : activeTab === "sold" ? "Booking Requests" : "Admin Communication"}
-            </h1>
-            <div className="relative max-w-md w-full ml-4 hidden sm:block">
+            <div className="relative max-w-md w-full hidden sm:block">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500 transition-colors" size={16} />
               <input 
                 type="text" 

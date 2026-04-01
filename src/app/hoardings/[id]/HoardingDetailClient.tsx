@@ -16,7 +16,8 @@ import {
   Share2,
   Heart,
   MessageSquare,
-  Loader2
+  Loader2,
+  ChevronLeft
 } from "lucide-react";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
@@ -50,6 +51,7 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
   const browserMapsApiKey =
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || "";
   const [mapsLoadFailed, setMapsLoadFailed] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const basePricePerMonth = hoarding.basePricePerMonth || hoarding.pricePerMonth || 0;
   const commissionPercent =
     hoarding.pricingConfig?.hoardspaceCommissionPercent || 0;
@@ -392,15 +394,55 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Media, Property Details, Description */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Main Image */}
-          <div className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden bg-gray-100 shadow-sm border border-gray-100">
-            <Image
-              src={hoarding.images?.[0] || 'https://images.unsplash.com/photo-1541535650810-10d26f5c2abb?auto=format&fit=crop&q=80&w=2000'}
-              alt={hoarding.name}
-              fill
-              className="object-cover"
-              priority
-            />
+          {/* Main Image & Gallery */}
+          <div className="space-y-4">
+            <div className="relative aspect-[16/9] w-full rounded-3xl overflow-hidden bg-gray-100 shadow-xl border border-white group">
+              <Image
+                src={hoarding.images?.[activeImageIndex] || 'https://images.unsplash.com/photo-1541535650810-10d26f5c2abb?auto=format&fit=crop&q=80&w=2000'}
+                alt={hoarding.name}
+                fill
+                className="object-cover transition-all duration-700 ease-in-out hover:scale-105"
+                priority
+              />
+              
+              {/* Navigation Arrows */}
+              {hoarding.images && hoarding.images.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setActiveImageIndex((prev) => (prev === 0 ? hoarding.images.length - 1 : prev - 1))}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-gray-800 opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:scale-110 shadow-lg"
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                  <button
+                    onClick={() => setActiveImageIndex((prev) => (prev === hoarding.images.length - 1 ? 0 : prev + 1))}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-gray-800 opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:scale-110 shadow-lg"
+                  >
+                    <ChevronRight size={24} />
+                  </button>
+                  
+                  {/* Image Count Badge */}
+                  <div className="absolute bottom-6 right-6 px-4 py-2 bg-black/50 backdrop-blur-md text-white rounded-2xl text-xs font-black uppercase tracking-widest border border-white/20">
+                    {activeImageIndex + 1} / {hoarding.images.length} Photos
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Thumbnails Gallery */}
+            {hoarding.images && hoarding.images.length > 1 && (
+              <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none snap-x">
+                {hoarding.images.map((img: string, idx: number) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`relative w-28 aspect-video rounded-2xl overflow-hidden flex-shrink-0 transition-all border-4 snap-start shrink-0 ${activeImageIndex === idx ? 'border-blue-600 scale-95 shadow-lg shadow-blue-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                  >
+                    <Image src={img} alt={`Thumbnail ${idx}`} fill className="object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Property Details Card */}

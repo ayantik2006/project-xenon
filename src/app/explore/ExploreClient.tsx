@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, ChevronDown, List, Map as MapIcon, User, Tag } from "lucide-react";
+import { ChevronRight, ChevronDown, List, Map as MapIcon, User, Tag, Camera } from "lucide-react";
 
 export default function ExploreClient({ initialHoardings, initialCity = "" }: { initialHoardings: any[], initialCity?: string }) {
   const [hoardings, setHoardings] = useState(initialHoardings);
@@ -176,6 +176,14 @@ export default function ExploreClient({ initialHoardings, initialCity = "" }: { 
                       fill
                       className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
                     />
+                    
+                    {/* Image Count Badge */}
+                    {hoarding.images && hoarding.images.length > 1 && (
+                      <div className="absolute top-3 right-3 px-3 py-1.5 bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-xl text-[10px] font-black flex items-center gap-1.5 shadow-lg">
+                        <Camera size={12} />
+                        {hoarding.images.length}
+                      </div>
+                    )}
                   </div>
 
                   {/* Content */}

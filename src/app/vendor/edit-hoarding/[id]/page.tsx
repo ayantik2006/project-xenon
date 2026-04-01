@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { hoardingSchema, type HoardingInput } from "@/lib/validators/hoarding";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { getLocationFromPincode, isValidIndianPincode } from "@/lib/googleMaps";
 import MapLocationPicker from "@/components/MapLocationPicker";
+import "@fontsource/chiron-goround-tc";
 import {
   Building2,
   MapPin,
@@ -18,6 +20,15 @@ import {
   Loader2,
   X,
   CheckCircle,
+  ArrowLeft,
+  Camera,
+  Layers,
+  Zap,
+  Globe,
+  Plus,
+  Trash2,
+  LayoutDashboard,
+  Save,
 } from "lucide-react";
 
 export default function EditHoardingPage() {
@@ -301,89 +312,146 @@ export default function EditHoardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Edit Hoarding</h1>
-          <p className="text-gray-500 mt-2">Update your hoarding details</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 py-12 px-4 sm:px-6 lg:px-8" style={{ fontFamily: "'Chiron GoRound TC', sans-serif" }}>
+      <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
+        {/* Navigation & Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6">
+          <div className="space-y-1">
+            <Link 
+              href="/vendor/dashboard" 
+              className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors bg-blue-50 px-4 py-2 rounded-xl mb-4 group"
+            >
+              <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+              Back to Dashboard
+            </Link>
+            <h1 className="text-4xl font-black text-gray-900 tracking-tight">
+              Edit <span className="text-blue-600">Hoarding</span>
+            </h1>
+            <p className="text-gray-500 font-medium">Update your property details to maximize listing visibility.</p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+             <Link
+                href="/vendor/dashboard"
+                className="px-8 py-4 bg-white text-orange-600 rounded-[1.5rem] font-black text-sm hover:bg-orange-600 hover:text-white transition-all border-2 border-orange-100 shadow-sm flex items-center justify-center min-w-[140px]"
+              >
+                Discard
+              </Link>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-10 py-4 bg-blue-600 text-white rounded-[1.5rem] font-black text-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 flex items-center justify-center gap-2 group disabled:opacity-50 min-w-[180px]"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="animate-spin" size={18} />
+                ) : (
+                  <>
+                    <Save size={18} className="group-hover:scale-110 transition-transform" />
+                    Save Changes
+                  </>
+                )}
+              </button>
+          </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl">
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="mb-6 p-4 bg-green-50 text-green-600 rounded-xl flex items-center gap-2">
-              <CheckCircle /> {success}
-            </div>
-          )}
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-[2rem] font-bold text-sm animate-in zoom-in duration-300 shadow-sm flex items-center gap-2">
+            <X size={18} className="shrink-0" />
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="p-4 bg-green-50 border border-green-100 text-green-700 rounded-[2rem] font-bold text-sm animate-in slide-in-from-top-4 duration-300 shadow-sm flex items-center gap-2">
+            <CheckCircle size={18} className="shrink-0" />
+            {success}
+          </div>
+        )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            {/* Basic Info */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-                Basic Details
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Hoarding Title
-                  </label>
+        <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Form Sections */}
+          <div className="lg:col-span-8 space-y-8">
+            
+            {/* Basic Info Card */}
+            <section className="bg-white/70 backdrop-blur-xl border border-white/40 shadow-2xl shadow-blue-900/5 rounded-[2.5rem] p-8 md:p-10 space-y-8 transition-all hover:shadow-blue-900/10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
+                  <Building2 size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-gray-900">Basic Information</h3>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Identify your media asset</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Property Title</label>
                   <input
                     {...register("name")}
                     placeholder="e.g. Billboard at Birsha Chawk"
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
+                    className={`w-full px-5 py-4 bg-gray-50/50 border-2 ${errors.name ? 'border-red-100 focus:border-red-500' : 'border-transparent focus:border-blue-600'} rounded-2xl outline-none font-bold text-gray-700 transition-all focus:bg-white`}
                   />
                   {errors.name && (
-                    <p className="text-xs text-red-500 mt-1">
+                    <p className="text-[10px] text-red-500 font-black uppercase px-1">
                       {errors.name.message}
                     </p>
                   )}
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
+                
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Description</label>
                   <textarea
                     {...register("description")}
-                    rows={3}
-                    placeholder="Describe visibility, traffic, etc."
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
+                    rows={4}
+                    placeholder="Describe visibility, daily traffic, and surrounding landmarks..."
+                    className="w-full px-5 py-4 bg-gray-50/50 border-2 border-transparent focus:border-blue-600 rounded-2xl outline-none font-bold text-gray-700 transition-all focus:bg-white resize-none"
                   />
                 </div>
               </div>
-            </div>
+            </section>
 
-            {/* Photos */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-                Photos
-              </h3>
+            {/* Photos & Assets */}
+            <section className="bg-white/70 backdrop-blur-xl border border-white/40 shadow-2xl shadow-blue-900/5 rounded-[2.5rem] p-8 md:p-10 space-y-8 transition-all hover:shadow-blue-900/10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center">
+                    <Camera size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-gray-900">Asset Gallery</h3>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">High-quality visual proof</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {images.map((img, idx) => (
                   <div
                     key={idx}
-                    className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group"
+                    className="relative aspect-square rounded-2xl overflow-hidden bg-gray-100 group shadow-sm border border-gray-100"
                   >
-                    <img src={img} className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(idx)}
-                      className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X size={14} />
-                    </button>
+                    <img src={img} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                       <button
+                        type="button"
+                        onClick={() => removeImage(idx)}
+                        className="bg-white text-red-600 p-2.5 rounded-xl hover:bg-red-600 hover:text-white transition-all transform hover:scale-110"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                 ))}
-                <div className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors relative">
+                
+                <div className="aspect-square border-2 border-dashed border-blue-100 rounded-2xl flex flex-col items-center justify-center text-gray-500 hover:bg-blue-50/50 hover:border-blue-400 transition-all relative group overflow-hidden">
                   {uploading ? (
-                    <Loader2 className="animate-spin" />
+                    <Loader2 className="animate-spin text-blue-600" />
                   ) : (
                     <>
-                      <ImageIcon className="mb-2" />
-                      <span className="text-xs">Upload Photo</span>
+                      <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                        <Plus size={20} />
+                      </div>
+                      <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Add Asset</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -394,305 +462,238 @@ export default function EditHoardingPage() {
                   )}
                 </div>
               </div>
-              <p className="text-xs text-gray-400">
-                Upload high-resolution images for better reach.
-              </p>
-            </div>
+            </section>
 
-            {/* Location */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b pb-2">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Location
-                </h3>
+            {/* Location & Map Section */}
+            <section className="bg-white/70 backdrop-blur-xl border border-white/40 shadow-2xl shadow-blue-900/5 rounded-[2.5rem] p-8 md:p-10 space-y-8 transition-all hover:shadow-blue-900/10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center">
+                    <Globe size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-gray-900">Location Details</h3>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Precise geolocating</p>
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowMap(!showMap)}
-                  className="text-sm text-[#2563eb] hover:underline flex items-center gap-1"
+                  className={`text-xs font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${showMap ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
                 >
                   <MapPin size={16} />
-                  {showMap ? "Hide Map" : "Pick on Map"}
+                  {showMap ? "Confirm Location" : "Show Map View"}
                 </button>
               </div>
 
               {showMap && (
-                <MapLocationPicker onLocationSelect={handleMapLocationSelect} />
+                <div className="rounded-[2rem] overflow-hidden border-4 border-white shadow-xl animate-in zoom-in duration-500">
+                  <MapLocationPicker onLocationSelect={handleMapLocationSelect} />
+                </div>
               )}
 
               <input type="hidden" {...register("latitude", { valueAsNumber: true })} />
               <input type="hidden" {...register("longitude", { valueAsNumber: true })} />
 
-              <p className="text-xs text-gray-500">
-                Price and map pin are required to update this listing.
-              </p>
-              {(errors.latitude || errors.longitude) && (
-                <p className="text-xs text-red-500">
-                  Pin the hoarding on the map before updating.
-                </p>
-              )}
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Address
-                  </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Exact Address</label>
+                  <div className="relative group">
+                    <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors transition-colors" size={18} />
                     <input
                       {...register("address")}
-                      value={watch("address") || ""}
-                      placeholder="Exact street address"
-                      className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
+                      placeholder="e.g. Sector 5, Near Salt Lake Mall"
+                      className="w-full pl-14 pr-5 py-4 bg-gray-50/50 border-2 border-transparent focus:border-blue-600 rounded-2xl outline-none font-bold text-gray-700 transition-all focus:bg-white"
                     />
                   </div>
-                  {errors.address && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {errors.address.message}
-                    </p>
-                  )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Zip Code
-                  </label>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Pincode</label>
                   <div className="relative">
                     <input
-                      name="zipCode"
                       value={watch("zipCode") || ""}
                       onChange={handlePincodeChange}
-                      placeholder="Enter 6-digit pincode"
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
+                      placeholder="6-digit ZIP"
+                      className="w-full px-5 py-4 bg-gray-50/50 border-2 border-transparent focus:border-blue-600 rounded-2xl outline-none font-bold text-gray-700 transition-all focus:bg-white"
                     />
                     {pincodeLoading && (
-                      <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-[#2563eb]" />
+                      <Loader2 className="absolute right-5 top-1/2 -translate-y-1/2 animate-spin text-blue-600" size={18} />
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Auto-fills city & state
-                  </p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    City
-                  </label>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">City</label>
                   <input
                     {...register("city")}
-                    value={watch("city") || ""}
-                    placeholder="e.g. Mumbai"
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
+                    placeholder="City"
+                    className="w-full px-5 py-4 bg-gray-50/50 border-2 border-transparent focus:border-blue-600 rounded-2xl outline-none font-bold text-gray-700 transition-all focus:bg-white"
                   />
-                  {errors.city && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {errors.city.message}
-                    </p>
-                  )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Area / Locality
-                  </label>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Area</label>
                   <input
                     {...register("area")}
-                    value={watch("area") || ""}
-                    placeholder="e.g. Andheri West"
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
+                    placeholder="Area"
+                    className="w-full px-5 py-4 bg-gray-50/50 border-2 border-transparent focus:border-blue-600 rounded-2xl outline-none font-bold text-gray-700 transition-all focus:bg-white"
                   />
-                  {errors.area && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {errors.area.message}
-                    </p>
-                  )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    State
-                  </label>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">State</label>
                   <input
                     {...register("state")}
-                    value={watch("state") || ""}
                     placeholder="State"
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
+                    className="w-full px-5 py-4 bg-gray-50/50 border-2 border-transparent focus:border-blue-600 rounded-2xl outline-none font-bold text-gray-700 transition-all focus:bg-white"
                   />
-                  {errors.state && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {errors.state.message}
-                    </p>
-                  )}
                 </div>
               </div>
-            </div>
+            </section>
+          </div>
 
-            {/* Specs & Pricing */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-                Specifications & Pricing
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Type
-                  </label>
-                  <select
-                    {...register("type")}
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
-                  >
-                    <option value="Billboard">Billboard</option>
-                    <option value="Unipole">Unipole</option>
-                    <option value="Gantry">Gantry</option>
-                    <option value="Bus Shelter">Bus Shelter</option>
-                    <option value="Kiosk">Kiosk</option>
-                    <option value="Other">Other</option>
-                  </select>
+          {/* Right Column: Specs, Pricing, & Actions */}
+          <div className="lg:col-span-4 space-y-8">
+            {/* Specs & Pricing Card */}
+            <section className="bg-white/80 backdrop-blur-xl border border-white/40 shadow-2xl shadow-blue-900/5 rounded-[2.5rem] p-8 space-y-8 sticky top-24">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
+                  <Layers size={24} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Lighting
-                  </label>
-                  <select
-                    {...register("lightingType")}
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
-                  >
-                    <option value="Non-Lit">Non-Lit</option>
-                    <option value="Lit">Lit</option>
-                    <option value="Front Lit">Front Lit</option>
-                    <option value="Back Lit">Back Lit</option>
-                  </select>
+                  <h3 className="text-xl font-black text-gray-900">Technical Specs</h3>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Dimensions & Pricing</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Dimensions (Feet)
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      {...register("width", { valueAsNumber: true })}
-                      type="number"
-                      placeholder="Width"
-                      className="w-1/2 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
-                    />
-                    <span className="self-center text-gray-400">x</span>
-                    <input
-                      {...register("height", { valueAsNumber: true })}
-                      type="number"
-                      placeholder="Height"
-                      className="w-1/2 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
-                    />
+              </div>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Type</label>
+                      <select
+                        {...register("type")}
+                        className="w-full px-4 py-3.5 bg-gray-50 border-none rounded-xl font-bold text-gray-700 focus:ring-2 focus:ring-blue-600 outline-none appearance-none"
+                      >
+                        <option value="Billboard">Billboard</option>
+                        <option value="Unipole">Unipole</option>
+                        <option value="Gantry">Gantry</option>
+                        <option value="Bus Shelter">Bus Shelter</option>
+                        <option value="Kiosk">Kiosk</option>
+                        <option value="Other">Other</option>
+                      </select>
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Lighting</label>
+                      <select
+                        {...register("lightingType")}
+                        className="w-full px-4 py-3.5 bg-gray-50 border-none rounded-xl font-bold text-gray-700 focus:ring-2 focus:ring-blue-600 outline-none appearance-none"
+                      >
+                        <option value="Non-Lit">Non-Lit</option>
+                        <option value="Lit">Lit</option>
+                        <option value="Front Lit">Front Lit</option>
+                        <option value="Back Lit">Back Lit</option>
+                      </select>
+                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Dimensions (Ft)</label>
+                  <div className="flex gap-3">
+                    <div className="relative flex-1">
+                       <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                       <input
+                        {...register("width", { valueAsNumber: true })}
+                        type="number"
+                        placeholder="W"
+                        className="w-full pl-9 pr-3 py-3.5 bg-gray-50 border-none rounded-xl font-bold text-gray-700 focus:ring-2 focus:ring-blue-600 outline-none"
+                      />
+                    </div>
+                    <span className="self-center font-black text-gray-300">X</span>
+                    <div className="relative flex-1">
+                       <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 rotate-90" size={14} />
+                       <input
+                        {...register("height", { valueAsNumber: true })}
+                        type="number"
+                        placeholder="H"
+                        className="w-full pl-9 pr-3 py-3.5 bg-gray-50 border-none rounded-xl font-bold text-gray-700 focus:ring-2 focus:ring-blue-600 outline-none"
+                      />
+                    </div>
                   </div>
-                  {(errors.width || errors.height) && (
-                    <p className="text-xs text-red-500 mt-1">
-                      Both dimensions required
-                    </p>
-                  )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Monthly Price (Base)
-                  </label>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Monthly Rental (Base)</label>
                   <div className="relative">
-                    <IndianRupee className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <IndianRupee className="absolute left-5 top-1/2 -translate-y-1/2 text-blue-600" size={18} />
                     <input
                       {...register("pricePerMonth", { valueAsNumber: true })}
                       type="number"
-                      min="1"
-                      placeholder="0.00"
-                      className="w-full pl-9 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
+                      placeholder="0,000"
+                      className="w-full pl-14 pr-5 py-4 bg-blue-50/50 border-2 border-transparent focus:border-blue-600 rounded-2xl outline-none font-black text-xl text-blue-900 transition-all focus:bg-white"
                     />
                   </div>
-                  {errors.pricePerMonth && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {errors.pricePerMonth.message}
-                    </p>
-                  )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Property Code
-                  </label>
-                  <input
-                    {...register("hoardingCode")}
-                    type="text"
-                    placeholder="Optional code"
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Traffic From
-                  </label>
-                  <input
-                    {...register("trafficFrom")}
-                    type="text"
-                    placeholder="Main road, junction, market..."
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Unique Traffic Data / Week
-                  </label>
-                  <input
-                    {...register("uniqueReach", { valueAsNumber: true })}
-                    type="number"
-                    min="0"
-                    placeholder="Optional"
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Unique Footfall Data / Week
-                  </label>
-                  <input
-                    {...register("uniqueFootfall", { valueAsNumber: true })}
-                    type="number"
-                    min="0"
-                    placeholder="Optional"
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
-                  />
+
+                <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 space-y-4">
+                  <div className="flex items-center gap-2 text-indigo-700">
+                    <Zap size={16} className="shrink-0" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Property Metadata</span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    <input
+                      {...register("hoardingCode")}
+                      placeholder="Unique Property Code"
+                      className="w-full px-4 py-2.5 bg-white border border-indigo-100 rounded-xl text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-indigo-600"
+                    />
+                    <input
+                      {...register("trafficFrom")}
+                      placeholder="Daily Traffic Flow"
+                      className="w-full px-4 py-2.5 bg-white border border-indigo-100 rounded-xl text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-indigo-600"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter">Reach/Wk</label>
+                      <input
+                        {...register("uniqueReach", { valueAsNumber: true })}
+                        type="number"
+                        className="w-full px-2 py-1.5 bg-white border border-indigo-100 rounded-lg text-xs font-bold"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter">Footfall/Wk</label>
+                      <input
+                        {...register("uniqueFootfall", { valueAsNumber: true })}
+                        type="number"
+                        className="w-full px-2 py-1.5 bg-white border border-indigo-100 rounded-lg text-xs font-bold"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Minimum Booking Amount */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Minimum Booking Amount
-                  </label>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Min. Booking Amount</label>
                   <div className="relative">
-                    <IndianRupee className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                     <input
-                      {...register("minimumBookingAmount", {
-                        valueAsNumber: true,
-                      })}
+                      {...register("minimumBookingAmount", { valueAsNumber: true })}
                       type="number"
-                      placeholder="0.00"
-                      className="w-full pl-9 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
+                      placeholder="Same as monthly if empty"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border-none rounded-xl font-bold text-sm text-gray-700 focus:ring-2 focus:ring-blue-600 outline-none"
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Leave blank if same as monthly price
-                  </p>
+                </div>
+
+                {/* Final Actions */}
+                <div className="pt-6 border-t border-gray-100 italic text-[10px] text-gray-400 font-medium text-center">
+                  All changes are saved to our secure cloud servers.
                 </div>
               </div>
-            </div>
-
-            <div className="pt-6 border-t flex gap-4">
-              <button
-                type="button"
-                onClick={() => router.push("/vendor/dashboard")}
-                className="flex-1 bg-gray-200 text-gray-700 py-4 rounded-xl font-bold text-lg hover:bg-gray-300 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 bg-[#2563eb] text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 disabled:opacity-50"
-              >
-                {isSubmitting ? "Updating..." : "Update Hoarding"}
-              </button>
-            </div>
-          </form>
-        </div>
+            </section>
+          </div>
+        </form>
       </div>
     </div>
   );
