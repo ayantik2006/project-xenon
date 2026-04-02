@@ -19,9 +19,68 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HoardSpace - Premium Outdoor Advertising",
+  metadataBase: new URL("https://hoardspace.in"),
+
+  title: {
+    default: "HoardSpace - Premium Outdoor Advertising",
+    template: "%s | HoardSpace",
+  },
+
   description:
     "Find and book premium hoarding spaces for your advertising campaigns",
+
+  keywords: [
+    "hoardings",
+    "outdoor advertising",
+    "billboards",
+    "ad spaces",
+    "advertising India",
+  ],
+
+  authors: [{ name: "HoardSpace Team" }],
+
+  openGraph: {
+    title: "HoardSpace - Premium Outdoor Advertising",
+    description:
+      "Find and book premium hoarding spaces for your advertising campaigns",
+    url: "https://hoardspace.in",
+    siteName: "HoardSpace",
+    images: [
+      {
+        url: "/companyLogo/Screenshot 2026-03-02 at 02.10.29.png", // create this
+        width: 1200,
+        height: 630,
+      },
+    ],
+    locale: "en_IN",
+    type: "website",
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "HoardSpace",
+    description:
+      "Find and book premium hoarding spaces for your advertising campaigns",
+    images: ["/companyLogo/Screenshot 2026-03-02 at 02.10.29.png"],
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+  },
+
+  icons: {
+    icon: "/favicon.ico",
+  },
+
+  alternates: {
+    canonical: "https://hoardspace.in",
+  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -53,6 +112,18 @@ export default function RootLayout({
         {children}
         <Footer />
         <AdminChatWidget />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "HoardSpace",
+              url: "https://hoardspace.in",
+              logo: "https://hoardspace.in/favicon.ico",
+            }),
+          }}
+        />
       </body>
     </html>
   );
