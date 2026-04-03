@@ -368,547 +368,285 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 py-12 px-4 sm:px-6 lg:px-8" style={{ fontFamily: "'Chiron GoRound TC', sans-serif" }}>
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="mb-2">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="flex items-center justify-between">
           <h2 className="text-4xl font-black tracking-tight leading-tight">
             <span className="font-sans font-black text-slate-900 mr-2">Your</span>
             <span className="font-serif italic bg-[linear-gradient(110deg,#2563eb,45%,#dbeafe,55%,#2563eb)] bg-[length:200%_auto] text-transparent bg-clip-text animate-shine drop-shadow-sm">Profile</span>
           </h2>
         </div>
-        {/* Header / Profile Card */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-          <div className="bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] h-32 relative" />
-          <div className="px-8 pb-8">
-            <div className="relative flex justify-between items-end -mt-12 mb-6">
-              <div className="flex items-end gap-6">
-                <div 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="h-24 w-24 rounded-2xl bg-white p-1 shadow-lg cursor-pointer group relative hover:scale-105 transition-transform"
-                >
-                  <div className="h-full w-full rounded-xl bg-blue-50 flex items-center justify-center text-[#2563eb] overflow-hidden">
-                    {uploadingPhoto ? (
-                      <Spinner className="animate-spin" size={24} />
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          {/* Box 1: Identity (Top Left) */}
+          <div className="md:col-span-8 bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm flex flex-col sm:flex-row items-center gap-8 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+            
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className="h-32 w-32 rounded-3xl bg-white p-1 shadow-xl cursor-pointer group relative hover:scale-105 transition-transform shrink-0 z-10"
+            >
+              <div className="h-full w-full rounded-2xl bg-blue-50 flex items-center justify-center text-[#2563eb] overflow-hidden">
+                {uploadingPhoto ? (
+                  <Spinner className="animate-spin" size={32} />
+                ) : (
+                  <>
+                    {photoPreview ? (
+                      <img src={photoPreview} alt={user.name} className="h-full w-full object-cover rounded-2xl" />
                     ) : (
-                      <>
-                        {photoPreview ? (
-                          <img
-                            src={photoPreview}
-                            alt={user.name}
-                            className="h-full w-full object-cover rounded-xl"
-                          />
-                        ) : (
-                          <User size={40} />
-                        )}
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
-                          <Camera className="text-white" size={24} />
-                        </div>
-                      </>
+                      <User size={56} />
                     )}
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    ref={fileInputRef}
-                    className="hidden"
-                    onChange={handlePhotoSelect}
-                  />
-                </div>
-                <div className="pb-1">
-                  <p className="text-sm text-gray-500 capitalize">
-                    {user.role}
-                  </p>
-                </div>
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
+                      <Camera className="text-white" size={28} />
+                    </div>
+                  </>
+                )}
               </div>
-              {user.role !== "admin" && (
-                <div className="hidden sm:block">
-                <span
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border ${
-                    displayKycStatus === "approved"
-                      ? "bg-green-50 text-green-700 border-green-200"
-                      : displayKycStatus === "submitted"
-                        ? "bg-yellow-50 text-yellow-700 border-yellow-200"
-                        : displayKycStatus === "rejected"
-                          ? "bg-red-50 text-red-700 border-red-200"
-                          : "bg-gray-50 text-gray-700 border-gray-200"
-                  }`}
-                >
-                  {displayKycStatus === "approved" && (
-                    <CheckCircle size={14} />
-                  )}
-                  {displayKycStatus === "submitted" && (
-                    <Clock size={14} />
-                  )}
-                  {displayKycStatus === "rejected" && (
-                    <AlertCircle size={14} />
-                  )}
-                  {displayKycStatus === "not_submitted" && (
-                    <AlertCircle size={14} />
-                  )}
-                  {displayKycStatus === "approved"
-                    ? "KYC Approved"
-                    : displayKycStatus === "submitted"
-                      ? "KYC Submitted"
-                      : displayKycStatus === "rejected"
-                      ? "KYC Rejected"
-                        : "KYC Not Submitted"}
+              <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handlePhotoSelect} />
+            </div>
+
+            <div className="flex-1 text-center sm:text-left z-10">
+              <p className="text-blue-600 font-bold text-xs uppercase tracking-widest mb-1 italic">Account Identity</p>
+              <h1 className="text-3xl font-black text-gray-900 mb-2">{user.name}</h1>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-black uppercase tracking-tighter">
+                  {user.role} Account
                 </span>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">
-                  Contact Info
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 text-gray-600 bg-gray-50 p-3 rounded-lg">
-                    <Mail size={18} className="text-gray-400" />
-                    <span className="text-sm">{user.email}</span>
-                    {user.emailVerified && (
-                      <CheckCircle
-                        size={14}
-                        className="text-green-500 ml-auto"
-                      />
-                    )}
-                  </div>
-                  {user.role !== "admin" && (
-                    <div className="flex items-center gap-3 text-gray-600 bg-gray-50 p-3 rounded-lg">
-                      <Phone size={18} className="text-gray-400" />
-                      <span className="text-sm">
-                        {user.phone || "Not provided"}
-                      </span>
-                      {user.isPhoneVerified && (
-                        <CheckCircle
-                          size={14}
-                          className="text-green-500 ml-auto"
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Buyer Dashboard Option */}
-              {user.role === "buyer" && (
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">
-                    Buyer Controls
-                  </h3>
-                  <div className="bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-xl p-5 text-white shadow-lg shadow-blue-200">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="text-lg font-bold">My Bookings</h4>
-                    </div>
-                    <p className="text-blue-100 text-sm mb-4">
-                      View and manage your hoarding bookings.
-                    </p>
-                    <button
-                      onClick={() => router.push("/buyer/dashboard")}
-                      className="w-full bg-white text-[#2563eb] font-bold py-2.5 rounded-lg text-sm hover:bg-gray-50 transition-colors"
-                    >
-                      Go to Dashboard
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Vendor Dashboard Option */}
-              {user.role === "vendor" && displayKycStatus === "approved" && (
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">
-                      Vendor Controls
-                    </h3>
-                    <div className="bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] rounded-xl p-5 text-white shadow-lg shadow-blue-200">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="text-lg font-bold">Manage Hoardings</h4>
-                      </div>
-                      <p className="text-blue-100 text-sm mb-4">
-                        Add, edit, and track your property listings.
-                      </p>
-                      <button
-                        onClick={() => router.push("/vendor/dashboard")}
-                        className="w-full bg-white text-[#2563eb] font-bold py-2.5 rounded-lg text-sm hover:bg-gray-50 transition-colors"
-                      >
-                        Go to Dashboard
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-              {/* Vendor Account Pending Message */}
-              {user.role === "vendor" && displayKycStatus === "submitted" && (
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">
-                    Vendor Status
-                  </h3>
-                  <div className="bg-yellow-50 rounded-xl p-5 border border-yellow-200 shadow-sm">
-                    <div className="flex items-center gap-2 text-yellow-800 mb-2">
-                      <Clock size={20} />
-                      <h4 className="text-lg font-bold">
-                        Verification In Progress
-                      </h4>
-                    </div>
-                    <p className="text-yellow-700 text-sm">
-                      Your vendor account functions (Dashboard, Add Hoarding)
-                      will be enabled once your KYC is approved by the admin.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {(displayKycStatus === "approved" ||
-                displayKycStatus === "submitted") &&
-                user.kycDetails && (
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">
-                      Company Details
-                    </h3>
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                      <div className="flex items-start gap-3">
-                        <MapPin size={18} className="text-gray-400 mt-1" />
-                        <span className="text-sm text-gray-600">
-                          {user.kycDetails.address || "No address provided"}
-                        </span>
-                      </div>
-                      {user.kycDetails.companyName && (
-                        <div className="flex items-center gap-3">
-                          <Building2 size={18} className="text-gray-400" />
-                          <span className="text-sm text-gray-600">
-                            {user.kycDetails.companyName}
-                          </span>
-                        </div>
-                      )}
-                      {user.kycDetails.gstin && (
-                        <div className="flex items-center gap-3">
-                          <FileText size={18} className="text-gray-400" />
-                          <span className="text-sm text-gray-600">
-                            GSTIN: {user.kycDetails.gstin}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-            </div>
-        </div>
-      </div>
-
-      {photoStatus && (
-        <div className={`mt-4 rounded-xl px-4 py-3 text-sm font-bold animate-in fade-in slide-in-from-top-2 ${
-          photoStatus.type === "success" ? "bg-green-50 text-green-700 border border-green-100" : "bg-red-50 text-red-700 border border-red-100"
-        }`}>
-          {photoStatus.message}
-        </div>
-      )}
-
-      {user.role !== "admin" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-50 p-2 rounded-lg text-[#2563eb]">
-              <Phone size={24} />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">
-                Phone Number Verification
-              </h2>
-              <p className="text-sm text-gray-500">
-                Verify your phone number in this separate section before you
-                submit KYC details.
-              </p>
-            </div>
-          </div>
-          <span
-            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${
-              user.isPhoneVerified
-                ? "bg-green-50 text-green-700 border-green-200"
-                : "bg-yellow-50 text-yellow-700 border-yellow-200"
-            }`}
-          >
-            {user.isPhoneVerified ? (
-              <>
-                <CheckCircle size={14} />
-                Verified
-              </>
-            ) : (
-              <>
-                <ShieldCheck size={14} />
-                Not Verified
-              </>
-            )}
-          </span>
-        </div>
-
-        <form onSubmit={handleSendPhoneOtp} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Phone Number
-            </label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                type="tel"
-                value={phoneInput}
-                onChange={(e) => {
-                  setPhoneInput(e.target.value);
-                  setPhoneStatus(null);
-                  setOtpSent(false);
-                  setOtpCode("");
-                  setOtpRecipient("");
-                  setResendCooldown(0);
-                }}
-                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all text-black"
-                placeholder="+91 98765 43210"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="submit"
-              disabled={
-                sendingPhoneOtp || !phoneInput.trim() || resendCooldown > 0
-              }
-              className="px-5 py-2.5 rounded-lg bg-[#2563eb] text-white font-semibold text-sm shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {sendingPhoneOtp
-                ? "Sending OTP..."
-                : otpSent
-                  ? "Resend OTP"
-                  : "Send OTP"}
-            </button>
-            {resendCooldown > 0 && (
-              <span className="text-xs text-gray-500">
-                You can resend in {resendCooldown} second
-                {resendCooldown !== 1 ? "s" : ""}.
-              </span>
-            )}
-          </div>
-        </form>
-
-        {otpSent && (
-          <form
-            onSubmit={handleVerifyPhoneOtp}
-            className="space-y-3 max-w-md bg-blue-50 border border-blue-100 p-4 rounded-xl"
-          >
-            <p className="text-sm text-blue-700">
-              Enter the 6-digit code sent to{" "}
-              <span className="font-semibold">
-                {otpRecipient || phoneInput}
-              </span>
-            </p>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value)}
-              className="w-full text-center text-2xl tracking-[0.5em] font-bold py-3 rounded-xl border border-blue-200 focus:ring-2 focus:ring-[#2563eb] outline-none text-black"
-            />
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="submit"
-                disabled={verifyingPhoneOtp || !otpCode.trim()}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-[#2563eb] text-white font-semibold text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {verifyingPhoneOtp ? "Verifying..." : "Verify OTP"}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSendPhoneOtp()}
-                disabled={sendingPhoneOtp || resendCooldown > 0}
-                className="text-xs text-[#2563eb] hover:underline disabled:text-gray-400 disabled:cursor-not-allowed"
-              >
-                Resend code
-              </button>
-            </div>
-          </form>
-        )}
-
-        {phoneStatus && (
-          <div
-            className={`rounded-lg px-4 py-3 text-sm ${
-              phoneStatus.type === "success"
-                ? "bg-green-50 text-green-600 border border-green-100"
-                : "bg-red-50 text-red-600 border border-red-100"
-            }`}
-          >
-            {phoneStatus.message}
-          </div>
-        )}
-        </div>
-      )}
-
-        {/* KYC Section */}
-        {(displayKycStatus === "not_submitted" ||
-          displayKycStatus === "rejected") && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-blue-100 p-2 rounded-lg text-[#2563eb]">
-                <ShieldCheck size={24} />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">
-                  Complete Your KYC
-                </h2>
-                <p className="text-sm text-gray-500">
-                  {displayKycStatus === "rejected"
-                    ? "Your previous KYC was rejected or reopened. Update the details below and submit again."
-                    : "Verify your identity to unlock all features"}
-                </p>
-              </div>
-            </div>
-
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 text-red-600 text-sm rounded-xl flex gap-2 items-center">
-                <AlertCircle size={16} />
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className="mb-6 p-4 bg-green-50 text-green-600 text-sm rounded-xl flex gap-2 items-center">
-                <CheckCircle size={16} />
-                {success}
-              </div>
-            )}
-
-            <form
-              onSubmit={kycForm.handleSubmit(handleKYCSubmit)}
-              className="space-y-6"
-            >
-              <p className="text-xs text-gray-500">
-                Submit the company details below for admin review. Your phone
-                number must be verified in the section above first.
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Company Name (Optional)
-                  </label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                    <input
-                      {...kycForm.register("companyName")}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all text-black"
-                      placeholder="Business Name"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    GSTIN{" "}
-                    <span className="text-gray-400 font-normal">(Optional)</span>
-                  </label>
-                  <input
-                    {...kycForm.register("gstin")}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all text-black"
-                    placeholder="GSTIN Number"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Registered Address
-                  </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                    <textarea
-                      rows={3}
-                      {...kycForm.register("address")}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-all text-black"
-                      placeholder="Full Address"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    PAN <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    {...kycForm.register("pan")}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all text-black"
-                    placeholder="PAN Number"
-                  />
-                  {kycForm.formState.errors.pan && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {kycForm.formState.errors.pan.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Aadhaar Number <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    {...kycForm.register("aadhaar")}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#2563eb] outline-none transition-all text-black"
-                    placeholder="Aadhaar Number"
-                  />
-                  {kycForm.formState.errors.aadhaar && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {kycForm.formState.errors.aadhaar.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                <label className="flex items-center gap-3 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    {...kycForm.register("acceptTerms")}
-                    className="mt-1 h-4 w-4 rounded border-gray-300 text-[#2563eb] focus:ring-[#2563eb] mb-1"
-                  />
-                  <span>
-                    I accept the{" "}
-                    <Link
-                      href="/terms"
-                      target="_blank"
-                      className="font-semibold text-[#2563eb] hover:underline"
-                    >
-                      Terms and Conditions
-                    </Link>{" "}
-                    for KYC submission.
+                {user.emailVerified && (
+                  <span className="px-3 py-1 bg-green-50 text-green-600 rounded-full text-xs font-black uppercase tracking-tighter flex items-center gap-1">
+                    <Shield size={12} /> Verified Email
                   </span>
-                </label>
-                {kycForm.formState.errors.acceptTerms && (
-                  <p className="mt-2 text-xs text-red-500">
-                    {kycForm.formState.errors.acceptTerms.message}
-                  </p>
                 )}
               </div>
-
-              <div className="flex justify-end pt-4">
-                <button
-                  type="submit"
-                  disabled={kycSubmitting}
-                  className="bg-[#2563eb] text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-lg shadow-blue-200"
-                >
-                  {kycSubmitting ? "Submitting..." : "Submit KYC Details"}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {displayKycStatus === "submitted" && (
-          <div className="bg-yellow-50 border border-yellow-100 rounded-2xl p-8 text-center">
-            <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 mb-4">
-              <Clock size={32} />
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Verification in Progress
-            </h2>
-            <p className="text-gray-600 max-w-md mx-auto">
-              Your KYC documents have been submitted and are currently under
-              review by our admin team. This process usually takes 24-48 hours.
-            </p>
           </div>
-        )}
+
+          {/* Box 2: Verification Status (Top Right) */}
+          <div className="md:col-span-4 bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm flex flex-col justify-between gap-6 relative overflow-hidden">
+            <div className="absolute bottom-0 right-0 w-24 h-24 bg-orange-50 rounded-full -mb-12 -mr-12" />
+            
+            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest relative z-10">Status Badges</h3>
+            
+            <div className="space-y-4 relative z-10">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <Mail size={18} className="text-gray-400" />
+                  <span className="text-xs font-bold text-gray-600">Email</span>
+                </div>
+                {user.emailVerified ? <CheckCircle size={16} className="text-green-500" /> : <Clock size={16} className="text-amber-500" />}
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <Phone size={18} className="text-gray-400" />
+                  <span className="text-xs font-bold text-gray-600">Mobile</span>
+                </div>
+                {user.isPhoneVerified ? <CheckCircle size={16} className="text-green-500" /> : <AlertCircle size={16} className="text-red-500" />}
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck size={18} className="text-gray-400" />
+                  <span className="text-xs font-bold text-gray-600">KYC Status</span>
+                </div>
+                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg ${
+                  displayKycStatus === "approved" ? "bg-green-100 text-green-700" :
+                  displayKycStatus === "submitted" ? "bg-amber-100 text-amber-700" :
+                  displayKycStatus === "rejected" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-500"
+                }`}>
+                  {displayKycStatus.replace("_", " ")}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Box 3: General Info & Action (Bottom Left) */}
+          <div className="md:col-span-8 bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <h3 className="text-sm font-black text-[#ff6900] uppercase tracking-widest">Connect Info</h3>
+                <div className="space-y-4">
+                  <div className="bg-gray-50 p-4 rounded-2xl border border-transparent hover:border-blue-100 transition-all group">
+                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Primary Email</p>
+                    <div className="flex items-center gap-3">
+                      <Mail size={20} className="text-blue-500" />
+                      <span className="font-bold text-gray-900 line-clamp-1">{user.email}</span>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-2xl border border-transparent hover:border-blue-100 transition-all group">
+                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Secure Mobile</p>
+                    <div className="flex items-center gap-3">
+                      <Phone size={20} className="text-blue-500" />
+                      <span className="font-bold text-gray-900">{user.phone || "Not linked"}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-sm font-black text-green-600 uppercase tracking-widest">Company & Location</h3>
+                <div className="bg-gray-50 p-5 rounded-2xl border border-transparent hover:border-blue-100 transition-all h-[calc(100%-2rem)]">
+                  {user.kycDetails ? (
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-3">
+                        <Building2 size={18} className="text-blue-500 mt-1" />
+                        <div>
+                          <p className="text-xs font-black text-gray-900">{user.kycDetails.companyName || "Personal Account"}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">{user.kycDetails.address}</p>
+                        </div>
+                      </div>
+                      {user.kycDetails.gstin && (
+                        <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+                          <FileText size={16} className="text-gray-400" />
+                          <span className="text-[10px] font-bold text-gray-600">GSTIN: {user.kycDetails.gstin}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-4">
+                      <MapPin size={24} className="text-gray-200 mb-2" />
+                      <p className="text-xs font-bold text-gray-400">Complete KYC to add company details</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-50 flex items-center justify-between gap-6">
+              <div className="flex-1">
+                {(user.role === "buyer" || (user.role === "vendor" && displayKycStatus === "approved")) && (
+                  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[24px] p-6 text-white shadow-xl shadow-blue-100 flex items-center justify-between group cursor-pointer"
+                       onClick={() => router.push(user.role === "buyer" ? "/buyer/dashboard" : "/vendor/dashboard")}>
+                    <div>
+                      <h4 className="text-xl font-black">Open {user.role === "buyer" ? "Campaign" : "Vendor"} Dashboard</h4>
+                      <p className="text-blue-100 text-xs font-medium mt-1">Manage your {user.role === "buyer" ? "bookings" : "listings"} and analytics</p>
+                    </div>
+                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center group-hover:bg-white group-hover:text-blue-600 transition-all">
+                      <ArrowRight size={24} />
+                    </div>
+                  </div>
+                )}
+                {user.role === "vendor" && displayKycStatus === "submitted" && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-[24px] p-6 flex items-center gap-4">
+                    <Clock size={32} className="text-amber-500" />
+                    <div>
+                      <h4 className="font-black text-amber-900">Verification Pending</h4>
+                      <p className="text-xs text-amber-700 font-medium">Your dashboard will be enabled once KYC is approved.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Box 4: Conditional Action Area (Bottom Right) */}
+          {(!user.isPhoneVerified || displayKycStatus === "not_submitted" || displayKycStatus === "rejected" || displayKycStatus === "submitted") && (
+            <div className="md:col-span-4 bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm relative">
+              {!user.isPhoneVerified ? (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-blue-50 p-2 rounded-xl text-blue-600">
+                      <Phone size={24} />
+                    </div>
+                    <h3 className="font-black text-gray-900 italic underline tracking-tight">Verify Mobile</h3>
+                  </div>
+
+                  <form onSubmit={handleSendPhoneOtp} className="space-y-4">
+                    <input
+                      type="tel"
+                      value={phoneInput}
+                      onChange={(e) => setPhoneInput(e.target.value)}
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-100 bg-gray-50 focus:ring-4 focus:ring-blue-500/10 outline-none font-bold text-sm transition-all"
+                      placeholder="+91 Mobile Number"
+                    />
+                    <button
+                      type="submit"
+                      disabled={sendingPhoneOtp || !phoneInput.trim() || resendCooldown > 0}
+                      className="w-full bg-blue-600 text-white rounded-2xl py-4 font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-100 hover:scale-[1.02] transition-transform disabled:opacity-50"
+                    >
+                      {sendingPhoneOtp ? "Sending..." : otpSent ? "Resend OTP" : "Send Verification OTP"}
+                    </button>
+                  </form>
+
+                  {otpSent && (
+                    <form onSubmit={handleVerifyPhoneOtp} className="space-y-4 mt-6 animate-in slide-in-from-bottom-4">
+                      <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                        <p className="text-[10px] font-black text-blue-500 uppercase mb-2">Enter 6-Digit Code</p>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value)}
+                          className="w-full text-center text-3xl font-black tracking-[0.4em] bg-transparent outline-none text-blue-600"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={verifyingPhoneOtp || !otpCode.trim()}
+                        className="w-full bg-indigo-600 text-white rounded-2xl py-4 font-black uppercase text-xs tracking-widest shadow-lg shadow-indigo-100"
+                      >
+                        {verifyingPhoneOtp ? "Checking..." : "Confirm OTP"}
+                      </button>
+                    </form>
+                  )}
+                  {phoneStatus && (
+                    <p className={`text-[10px] font-bold text-center ${phoneStatus.type === "success" ? "text-green-500" : "text-red-500"}`}>
+                      {phoneStatus.message}
+                    </p>
+                  )}
+                </div>
+              ) : (displayKycStatus === "not_submitted" || displayKycStatus === "rejected") ? (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-indigo-50 p-2 rounded-xl text-indigo-600">
+                      <ShieldCheck size={24} />
+                    </div>
+                    <h3 className="font-black text-gray-900 italic underline tracking-tight">KYC Verification</h3>
+                  </div>
+
+                  <p className="text-[11px] text-gray-500 font-medium">Verify your identity to unlock dashboard controls and premium features.</p>
+                  
+                  {error && <p className="text-[10px] font-bold text-red-500 bg-red-50 p-2 rounded-lg">{error}</p>}
+                  {success && <p className="text-[10px] font-bold text-green-500 bg-green-50 p-2 rounded-lg">{success}</p>}
+
+                  <form onSubmit={kycForm.handleSubmit(handleKYCSubmit)} className="space-y-4">
+                    <div className="grid grid-cols-1 gap-3">
+                      <input {...kycForm.register("companyName")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="Company Name (Optional)" />
+                      <input {...kycForm.register("gstin")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="GSTIN (Optional)" />
+                      <input {...kycForm.register("pan")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="PAN Number *" />
+                      {kycForm.formState.errors.pan && <p className="text-[9px] text-red-500 font-bold">{kycForm.formState.errors.pan.message}</p>}
+                      <input {...kycForm.register("aadhaar")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="Aadhaar Number *" />
+                      {kycForm.formState.errors.aadhaar && <p className="text-[9px] text-red-500 font-bold">{kycForm.formState.errors.aadhaar.message}</p>}
+                      <textarea {...kycForm.register("address")} rows={2} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="Registered Address *" />
+                    </div>
+
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" {...kycForm.register("acceptTerms")} className="rounded text-blue-600" />
+                      <span className="text-[9px] font-bold text-gray-500">I accept Terms & Conditions</span>
+                    </label>
+
+                    <button
+                      type="submit"
+                      disabled={kycSubmitting}
+                      className="w-full bg-blue-600 text-white rounded-2xl py-4 font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-100 hover:scale-[1.02] transition-transform disabled:opacity-50"
+                    >
+                      {kycSubmitting ? "Submitting..." : "Submit KYC Now"}
+                    </button>
+                  </form>
+                </div>
+              ) : displayKycStatus === "submitted" ? (
+                <div className="flex flex-col items-center justify-center h-full text-center py-10 space-y-4">
+                  <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 animate-pulse">
+                    <Clock size={40} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-gray-900 italic">Reviewing KYC</h3>
+                    <p className="text-xs text-gray-500 font-medium px-4 mt-2">Our team is verifying your details. This usually takes 24-48 hours.</p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

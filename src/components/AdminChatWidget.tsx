@@ -42,20 +42,11 @@ const formatChatTime = (date: Date) =>
 
 export default function AdminChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"admin" | "bot">("admin");
   const [messageInput, setMessageInput] = useState("");
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [adminMessages, setAdminMessages] = useState<WidgetMessage[]>([]);
   const [adminChatLoading, setAdminChatLoading] = useState(false);
   const [adminChatError, setAdminChatError] = useState<string | null>(null);
-  const [botMessages, setBotMessages] = useState<WidgetMessage[]>([
-    {
-      id: "bot-welcome",
-      text: "Hello! I am the HoardSpace AI Assistant. Ask me about booking, listing, pricing, or platform features.",
-      sender: "bot",
-      time: formatChatTime(new Date()),
-    },
-  ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -63,7 +54,17 @@ export default function AdminChatWidget() {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [adminMessages, botMessages, isOpen, activeTab]);
+  }, [adminMessages, isOpen]);
+
+  useEffect(() => {
+    // Listen for custom "open-support-chat" event
+    const handleOpenSupportChat = (e: any) => {
+      setIsOpen(true);
+    };
+
+    window.addEventListener("hoardspace-open-support-chat", handleOpenSupportChat);
+    return () => window.removeEventListener("hoardspace-open-support-chat", handleOpenSupportChat);
+  }, []);
 
   useEffect(() => {
     let isCancelled = false;
@@ -159,91 +160,41 @@ export default function AdminChatWidget() {
     return () => clearInterval(interval);
   }, [canUseAdminChat]);
 
-  const getBotResponse = (input: string): string => {
-    const text = input.toLowerCase();
 
-    if (text.includes("book") || text.includes("rent") || text.includes("buy")) {
-      return "To book a hoarding, head over to the Explore tab, select your dates, and complete checkout.";
-    }
-    if (text.includes("price") || text.includes("cost")) {
-      return "Pricing depends on location, board size, and lighting type. Every listing shows its current rate clearly.";
-    }
-    if (text.includes("vendor") || text.includes("list") || text.includes("owner")) {
-      return "You can register as a vendor and list your hoardings from the vendor dashboard.";
-    }
-    if (text.includes("payment") || text.includes("secure") || text.includes("razorpay")) {
-      return "Bookings are processed securely through Razorpay with cards, UPI, and net banking.";
-    }
-    if (text.includes("dashboard") || text.includes("profile")) {
-      return "Your dashboard helps you manage bookings, messages, and saved items from one place.";
-    }
-    if (text.includes("hi") || text.includes("hello") || text.includes("hey")) {
-      return "Hello! I can help with booking, pricing, listings, and general platform questions.";
-    }
-
-    return "I am best at answering questions about booking spaces, vendor listings, pricing, and platform features. Try rephrasing that for me.";
-  };
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!messageInput.trim()) return;
 
-    if (activeTab === "admin") {
-      if (!canUseAdminChat || adminChatLoading) return;
+    if (!canUseAdminChat || adminChatLoading) return;
 
-      const content = messageInput.trim();
-      setMessageInput("");
-
-      try {
-        const res = await fetchWithAuth("/api/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to send support message");
-        }
-
-        const data = await res.json();
-        setAdminMessages((prev) => [
-          ...prev,
-          mapApiMessageToWidgetMessage(data.data as ApiMessage),
-        ]);
-        setAdminChatError(null);
-      } catch (error) {
-        setMessageInput(content);
-        setAdminChatError("Could not send your message. Please try again.");
-      }
-      return;
-    }
-
-    const newMsg: WidgetMessage = {
-      id: `bot-user-${Date.now()}`,
-      text: messageInput.trim(),
-      sender: "user",
-      time: formatChatTime(new Date()),
-    };
-
-    setBotMessages((prev) => [...prev, newMsg]);
+    const content = messageInput.trim();
     setMessageInput("");
 
-    setTimeout(() => {
-      const botReply = getBotResponse(newMsg.text);
-      setBotMessages((prev) => [
+    try {
+      const res = await fetchWithAuth("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to send support message");
+      }
+
+      const data = await res.json();
+      setAdminMessages((prev) => [
         ...prev,
-        {
-          id: `bot-reply-${Date.now()}`,
-          text: botReply,
-          sender: "bot",
-          time: formatChatTime(new Date()),
-        },
+        mapApiMessageToWidgetMessage(data.data as ApiMessage),
       ]);
-    }, 600);
+      setAdminChatError(null);
+    } catch (error) {
+      setMessageInput(content);
+      setAdminChatError("Could not send your message. Please try again.");
+    }
   };
 
-  const currentMessages =
-    activeTab === "admin" ? adminMessages : botMessages;
+  const currentMessages = adminMessages;
 
   return (
     <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
@@ -256,22 +207,14 @@ export default function AdminChatWidget() {
             <div className="flex items-center justify-between px-4 pb-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20">
-                  {activeTab === "admin" ? (
-                    <User size={20} className="text-white" />
-                  ) : (
-                    <Bot size={20} className="text-white" />
-                  )}
+                  <User size={20} className="text-white" />
                 </div>
                 <div>
-                  <h3 className="text-[15px] font-semibold leading-tight">
-                    {activeTab === "admin" ? "HoardSpace Support" : "AI Help Desk"}
-                  </h3>
+                  <h3 className="text-[15px] font-semibold leading-tight">HoardSpace Support</h3>
                   <p className="mt-0.5 text-[12px] font-medium tracking-wide text-blue-100 opacity-90">
-                    {activeTab === "admin"
-                      ? canUseAdminChat
-                        ? "Replies from the admin team"
-                        : "Login as buyer/vendor to message support"
-                      : "Automated bot responses"}
+                    {canUseAdminChat
+                      ? "Replies from the admin team"
+                      : "Login to message support"}
                   </p>
                 </div>
               </div>
@@ -283,28 +226,7 @@ export default function AdminChatWidget() {
               </button>
             </div>
 
-            <div className="flex w-full bg-[#0a325a]">
-              <button
-                onClick={() => setActiveTab("admin")}
-                className={`flex-1 border-b-[3px] py-2 text-[13px] font-bold uppercase tracking-wider transition-colors ${
-                  activeTab === "admin"
-                    ? "border-orange-400 text-orange-400"
-                    : "border-transparent text-white/60 hover:text-white/80"
-                }`}
-              >
-                Admin Chat
-              </button>
-              <button
-                onClick={() => setActiveTab("bot")}
-                className={`flex-1 border-b-[3px] py-2 text-[13px] font-bold uppercase tracking-wider transition-colors ${
-                  activeTab === "bot"
-                    ? "border-orange-400 text-orange-400"
-                    : "border-transparent text-white/60 hover:text-white/80"
-                }`}
-              >
-                AI Help Desk
-              </button>
-            </div>
+
           </div>
 
           <div className="relative flex flex-1 flex-col gap-2 overflow-y-auto p-4">
@@ -323,28 +245,25 @@ export default function AdminChatWidget() {
               </span>
             </div>
 
-            {activeTab === "admin" &&
-              adminChatLoading &&
-              currentMessages.length === 0 && (
-                <div className="relative z-10 text-center text-sm text-gray-500">
-                  Loading support chat...
-                </div>
-              )}
+            {adminChatLoading && currentMessages.length === 0 && (
+              <div className="relative z-10 text-center text-sm text-gray-500">
+                Loading support chat...
+              </div>
+            )}
 
-            {activeTab === "admin" && adminChatError && (
+            {adminChatError && (
               <div className="relative z-10 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
                 {adminChatError}
               </div>
             )}
 
-            {activeTab === "admin" && !canUseAdminChat && (
+            {!canUseAdminChat && (
               <div className="relative z-10 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700">
                 Sign in as a buyer or vendor to chat with the admin team here.
               </div>
             )}
 
-            {activeTab === "admin" &&
-              canUseAdminChat &&
+            {canUseAdminChat &&
               currentMessages.length === 0 &&
               !adminChatLoading && (
                 <div className="relative z-10 text-center text-sm text-gray-500">
@@ -405,18 +324,17 @@ export default function AdminChatWidget() {
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
                 placeholder={
-                  activeTab === "admin" && !canUseAdminChat
+                  !canUseAdminChat
                     ? "Login required for admin chat"
                     : "Type a message"
                 }
-                disabled={activeTab === "admin" && !canUseAdminChat}
+                disabled={!canUseAdminChat}
                 className="flex-1 rounded-full border border-transparent bg-white px-5 py-3 text-[15px] text-gray-800 shadow-sm outline-none transition-colors placeholder:text-gray-500 focus:border-blue-100"
               />
               <button
                 type="submit"
                 disabled={
-                  !messageInput.trim() ||
-                  (activeTab === "admin" && !canUseAdminChat)
+                  !messageInput.trim() || !canUseAdminChat
                 }
                 className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full bg-[#f97316] text-white shadow-sm transition-colors hover:bg-[#ea580c] disabled:cursor-not-allowed disabled:bg-gray-400"
               >

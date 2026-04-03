@@ -70,7 +70,7 @@ export const metadata: Metadata = {
   },
 
   icons: {
-    icon: "/favicon.ico",
+    icon: "/icon1.png",
   },
 
   alternates: {
@@ -120,7 +120,7 @@ export default function RootLayout({
               "@type": "Organization",
               name: "HoardSpace",
               url: "https://hoardspace.in",
-              logo: "https://hoardspace.in/favicon.ico",
+              logo: "https://hoardspace.in/companyLogo/Screenshot 2026-03-02 at 02.10.29.png",
             }),
           }}
         />

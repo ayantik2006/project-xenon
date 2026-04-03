@@ -1689,7 +1689,13 @@ function Overview({ bookings, hoardings, setActiveTab }: { bookings: Booking[]; 
           </div>
           
           <div className="space-y-2 mb-8">
-            <button onClick={() => setActiveTab("chat")} className="w-full py-3 bg-white text-gray-700 border border-gray-100 rounded-xl font-bold text-xs hover:bg-gray-50 transition-all">
+            <button 
+              onClick={() => {
+                const event = new CustomEvent("hoardspace-open-support-chat");
+                window.dispatchEvent(event);
+              }} 
+              className="w-full py-3 bg-white text-gray-700 border border-gray-100 rounded-xl font-bold text-xs hover:bg-gray-50 transition-all"
+            >
               Open Support Chat
             </button>
           </div>

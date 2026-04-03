@@ -53,7 +53,7 @@ export default function ExploreClient({ initialHoardings, initialCity = "" }: { 
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Left Sidebar Filters */}
         <aside className="w-full lg:w-72 flex-shrink-0">
-          <div className="bg-white border-r border-gray-100 lg:pr-6 h-full min-h-[600px]">
+          <div className="bg-white border-r border-gray-100 p-6 h-full min-h-[600px]">
             <h2 className="text-xl font-bold text-gray-900 mb-6 font-sans">Filters</h2>
 
             {/* LOCATION Filter */}
