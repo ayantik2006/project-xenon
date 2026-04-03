@@ -1,6 +1,5 @@
 import Image from "next/image";
 import SearchBar from "@/components/SearchBar";
-import AboutSection from "@/app/about/page";
 import HowItWorks from "@/components/HowItWorks";
 import "@fontsource/chiron-goround-tc";
 
@@ -42,9 +41,6 @@ export default function Home() {
 
       <HowItWorks />
 
-      <section id="about">
-        <AboutSection />
-      </section>
     </div>
   );
 }

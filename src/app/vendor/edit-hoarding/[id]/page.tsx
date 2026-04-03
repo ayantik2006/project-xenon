@@ -506,7 +506,10 @@ export default function EditHoardingPage() {
 
               {showMap && (
                 <div className="rounded-[2rem] overflow-hidden border-4 border-white shadow-xl animate-in zoom-in duration-500">
-                  <MapLocationPicker onLocationSelect={handleMapLocationSelect} />
+                  <MapLocationPicker 
+                    onLocationSelect={handleMapLocationSelect} 
+                    searchAddress={[watch("address"), watch("area"), watch("city"), watch("state")].filter(Boolean).join(", ")}
+                  />
                 </div>
               )}
 

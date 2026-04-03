@@ -594,7 +594,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">
-                      I want to Buy Media
+                      Sign in as advertiser
                     </h3>
                     <p className="text-xs text-gray-500">
                       Find and book advertising spaces
@@ -611,27 +611,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">
-                      I want to Sell Media
+                      Sign in as vendor
                     </h3>
                     <p className="text-xs text-gray-500">
                       List and manage your properties
-                    </p>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => handleRoleSelect("admin")}
-                  className="w-full p-4 border rounded-xl hover:border-[#2563eb] hover:bg-blue-50 transition-all group flex items-center gap-4 text-left"
-                >
-                  <div className="bg-slate-100 p-3 rounded-full text-slate-700 group-hover:bg-[#2563eb] group-hover:text-white transition-colors">
-                    <ShieldCheck size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">
-                      Admin Login
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      Access the HoardSpace company dashboard
                     </p>
                   </div>
                 </button>

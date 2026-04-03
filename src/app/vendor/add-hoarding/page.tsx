@@ -372,7 +372,10 @@ export default function AddHoardingPage() {
               </div>
 
               {showMap && (
-                <MapLocationPicker onLocationSelect={handleMapLocationSelect} />
+                <MapLocationPicker 
+                  onLocationSelect={handleMapLocationSelect} 
+                  searchAddress={[watch("address"), watch("area"), watch("city"), watch("state")].filter(Boolean).join(", ")}
+                />
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

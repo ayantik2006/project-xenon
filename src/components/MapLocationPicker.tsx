@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import { getAddressFromCoordinates } from "@/lib/googleMaps";
 import { MapPin, Loader2 } from "lucide-react";
@@ -16,6 +16,7 @@ interface MapLocationPickerProps {
     lng: number;
   }) => void;
   initialCenter?: { lat: number; lng: number };
+  searchAddress?: string;
 }
 
 const mapContainerStyle = {
@@ -33,6 +34,7 @@ const defaultCenter = {
 export default function MapLocationPicker({
   onLocationSelect,
   initialCenter,
+  searchAddress,
 }: MapLocationPickerProps) {
   const browserMapsApiKey =
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || "";
@@ -42,6 +44,7 @@ export default function MapLocationPicker({
     lng: number;
   } | null>(initialCenter || null);
   const [mapCenter, setMapCenter] = useState(initialCenter || defaultCenter);
+  const [mapZoom, setMapZoom] = useState(initialCenter ? 15 : 5);
   const [loading, setLoading] = useState(false);
   const [mapsLoadFailed, setMapsLoadFailed] = useState(false);
 
@@ -49,6 +52,24 @@ export default function MapLocationPicker({
     id: "google-map-script",
     googleMapsApiKey: browserMapsApiKey,
   });
+
+  useEffect(() => {
+    if (isLoaded && searchAddress && !markerPosition) {
+      const geocoder = new window.google.maps.Geocoder();
+      const cleanAddress = searchAddress.replace(/,/g, "").trim();
+      
+      if (cleanAddress.length > 3) {
+        geocoder.geocode({ address: searchAddress + ", India" }, (results, status) => {
+          if (status === "OK" && results?.[0]) {
+            const lat = results[0].geometry.location.lat();
+            const lng = results[0].geometry.location.lng();
+            setMapCenter({ lat, lng });
+            setMapZoom(14);
+          }
+        });
+      }
+    }
+  }, [isLoaded, searchAddress, markerPosition]);
 
   const handleMapClick = useCallback(
     async (e: google.maps.MapMouseEvent) => {
@@ -158,7 +179,7 @@ export default function MapLocationPicker({
         ) : (
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
-            zoom={markerPosition ? 15 : 5}
+            zoom={markerPosition ? 15 : mapZoom}
             center={mapCenter}
             onClick={handleMapClick}
             options={{
