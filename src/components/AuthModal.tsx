@@ -594,7 +594,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">
-                      I want to Buy Media
+                      Sign in as advertiser
                     </h3>
                     <p className="text-xs text-gray-500">
                       Find and book advertising spaces
@@ -611,7 +611,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">
-                      I want to Sell Media
+                      Sign in as vendor
                     </h3>
                     <p className="text-xs text-gray-500">
                       List and manage your properties

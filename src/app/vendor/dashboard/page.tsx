@@ -1042,7 +1042,10 @@ export default function VendorDashboard() {
 
                   {showMap && (
                     <div className="border border-gray-100 rounded-3xl overflow-hidden mb-4">
-                      <MapLocationPicker onLocationSelect={handleMapLocationSelectModal} />
+                      <MapLocationPicker 
+                        onLocationSelect={handleMapLocationSelectModal} 
+                        searchAddress={[newHoarding.address, newHoarding.area, newHoarding.city, newHoarding.state].filter(Boolean).join(", ")}
+                      />
                     </div>
                   )}
 

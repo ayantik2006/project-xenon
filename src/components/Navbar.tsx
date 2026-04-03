@@ -80,7 +80,7 @@ export default function Navbar() {
                 <Link href="/#how-it-works" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 transition-colors whitespace-nowrap h-full">
                   How It Works
                 </Link>
-                <Link href="/#about" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 transition-colors whitespace-nowrap h-full">
+                <Link href="/about" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 transition-colors whitespace-nowrap h-full">
                   About Us
                 </Link>
                 <Link href="/contact" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 transition-colors whitespace-nowrap h-full">
@@ -161,7 +161,7 @@ export default function Navbar() {
                   How it Works
                 </Link>
                 <Link 
-                  href="/#about" 
+                  href="/about" 
                   onClick={() => setIsMenuOpen(false)}
                   className="px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-700 hover:bg-blue-100 rounded-lg transition-all block w-full text-left"
                 >
