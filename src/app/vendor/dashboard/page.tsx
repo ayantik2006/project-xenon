@@ -145,6 +145,7 @@ export default function VendorDashboard() {
     type: "Billboard",
     lightingType: "Lit",
     pricePerMonth: 0,
+    minimumBookingMonths: 1,
     hoardingCode: "",
     trafficFrom: "",
     uniqueReach: 0,
@@ -1167,19 +1168,34 @@ export default function VendorDashboard() {
                         ))}
                      </div>
                    </div>
-                   <div className="space-y-2">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Price / Month</label>
-                     <div className="relative">
-                        <span className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-gray-400">₹</span>
-                        <input 
-                          required
-                          type="number" 
-                          min="1"
-                          className="w-full pl-10 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none font-bold text-gray-700"
-                          value={newHoarding.pricePerMonth}
-                          onChange={(e) => setNewHoarding({...newHoarding, pricePerMonth: e.target.value})}
-                        />
-                     </div>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Price / Month</label>
+                        <div className="relative">
+                          <span className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-gray-400">₹</span>
+                          <input 
+                            required
+                            type="number" 
+                            min="1"
+                            className="w-full pl-10 pr-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none font-bold text-gray-700"
+                            value={newHoarding.pricePerMonth}
+                            onChange={(e) => setNewHoarding({...newHoarding, pricePerMonth: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Minimum Booking Period (Months)</label>
+                        <select 
+                          className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none font-bold text-gray-700 appearance-none"
+                          value={newHoarding.minimumBookingMonths || 1}
+                          onChange={(e) => setNewHoarding({...newHoarding, minimumBookingMonths: Number(e.target.value)})}
+                        >
+                          {[1, 2, 3, 6, 12].map(m => (
+                            <option key={m} value={m}>{m} Month{m > 1 ? 's' : ''}</option>
+                          ))}
+                        </select>
+                        <p className="text-[10px] font-bold text-blue-500 mt-1 px-1">Default is 1 month if not selected.</p>
+                      </div>
                    </div>
                 </div>
 

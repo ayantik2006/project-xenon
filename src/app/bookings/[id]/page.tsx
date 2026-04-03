@@ -187,38 +187,36 @@ export default function BookingPage() {
 
   // Pricing Logic
   const calculatePricing = () => {
-    if (!hoarding)
-      return {
-        base: 0,
-        commission: 0,
-        commissionPercent: 0,
-        gateway: 0,
-        gatewayPercent: 2.5,
-        gst: 0,
-        gstPercent: 2.5,
-        total: 0,
-      };
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const months = Math.max(1, diffDays / 30);
 
-    const basePrice = hoarding.basePricePerMonth || hoarding.pricePerMonth;
-    const commissionPercent =
-      hoarding.pricingConfig?.hoardspaceCommissionPercent || 0;
+    const basePricePerMonth = hoarding.basePricePerMonth || hoarding.pricePerMonth;
+    const commissionPercent = hoarding.pricingConfig?.hoardspaceCommissionPercent || 0;
     const gatewayPercent = hoarding.pricingConfig?.razorpayPercent || 2.5;
     const gstPercent = hoarding.pricingConfig?.gstPercent || 2.5;
+
+    const basePrice = basePricePerMonth * months;
     const commission = basePrice * (commissionPercent / 100);
     const subtotal = basePrice + commission;
     const gatewayCharges = subtotal * (gatewayPercent / 100);
     const gst = subtotal * (gstPercent / 100);
+    const gstTax = gst * 0.18;
 
-    const total = subtotal + gatewayCharges + gst;
+    const total = subtotal + gatewayCharges + gst + gstTax;
 
     return {
       base: basePrice,
+      durationMonths: months,
       commission,
       commissionPercent,
       gateway: gatewayCharges,
       gatewayPercent,
       gst,
       gstPercent,
+      gstTax,
       total: Math.round(total),
     };
   };
@@ -254,6 +252,17 @@ export default function BookingPage() {
     }
     setProcessing(true);
     setError("");
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 30) {
+      setError("Minimum booking duration is 1 month (30 days).");
+      setProcessing(false);
+      return;
+    }
 
     try {
       if (!selectedBookingId) {
@@ -677,9 +686,12 @@ export default function BookingPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500 font-medium">
                       GST ({pricing.gstPercent}%)
+                      <span className="text-red-500 text-[10px] font-bold ml-1">
+                        + (18% on {pricing.gstPercent}%)
+                      </span>
                     </span>
                     <span className="text-gray-900 font-black tracking-tight">
-                      ₹{pricing.gst.toLocaleString()}
+                      ₹{(pricing.gst + (pricing as any).gstTax).toLocaleString()}
                     </span>
                   </div>
                   <div className="pt-4 mt-4 border-t border-gray-200">

@@ -19,7 +19,7 @@ import {
   Loader2,
   ChevronLeft
 } from "lucide-react";
-import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
+import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 interface HoardingDetailClientProps {
@@ -33,7 +33,7 @@ const mapContainerStyle = {
 };
 
 export default function HoardingDetailClient({ hoarding }: HoardingDetailClientProps) {
-  const [selectedDates, setSelectedDates] = useState({ start: "", end: "" });
+  const [selectedDates, setSelectedDates] = useState({ start: "", end: "", months: "1" });
   const [blockedDates, setBlockedDates] = useState<any[]>([]);
   const [dateError, setDateError] = useState("");
   const [bookRoleMessage, setBookRoleMessage] = useState("");
@@ -57,13 +57,19 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
     hoarding.pricingConfig?.hoardspaceCommissionPercent || 0;
   const razorpayPercent = hoarding.pricingConfig?.razorpayPercent || 2.5;
   const gstPercent = hoarding.pricingConfig?.gstPercent || 2.5;
+  const start = selectedDates.start ? new Date(selectedDates.start) : null;
+  const end = selectedDates.end ? new Date(selectedDates.end) : null;
+  const diffDays = start && end ? Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) : 30;
+  const durationMonths = Math.max(1, diffDays / 30);
+
   const approxMonthlyCost =
     hoarding.pricingBreakdown?.totalPricePerMonth ||
     Math.ceil(
-      basePricePerMonth +
+      (basePricePerMonth +
         (basePricePerMonth * commissionPercent) / 100 +
         (basePricePerMonth * razorpayPercent) / 100 +
-        (basePricePerMonth * gstPercent) / 100,
+        (basePricePerMonth * gstPercent) / 100 +
+        ((basePricePerMonth * gstPercent) / 100) * 0.18) * durationMonths,
     );
   const isBuyerKycVerified =
     currentUserKycStatus === "approved" || currentUserKycStatus === "verified";
@@ -148,28 +154,82 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
     return true;
   };
 
-  const handleDateChange = (type: "start" | "end", value: string) => {
-    if (value && isDateBlocked(value)) {
-      setDateError("That date is unavailable because it is already booked or blocked.");
-      setSelectedDates((prev) => ({ ...prev, [type]: "" }));
-      return;
-    }
-
-    const newDates = { ...selectedDates, [type]: value };
-    if (
-      newDates.start &&
-      newDates.end &&
-      !validateDates(newDates.start, newDates.end)
-    ) {
-      setSelectedDates({
-        ...newDates,
-        [type]: "",
-      });
-      return;
-    }
-
+  const handleDateChange = (type: "start" | "end" | "months", value: string) => {
     setDateError("");
-    setSelectedDates(newDates);
+    setBookRoleMessage("");
+
+    if (type === "start") {
+      const start = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (start < today) {
+        setDateError("Start date cannot be in the past.");
+        return;
+      }
+
+      // If months is present, update end date
+      const months = parseFloat(selectedDates.months);
+      if (months > 0) {
+        const end = new Date(start);
+        end.setDate(end.getDate() + Math.ceil(months * 30));
+        setSelectedDates({ 
+          start: value, 
+          end: end.toISOString().split('T')[0], 
+          months: selectedDates.months 
+        });
+      } else {
+        setSelectedDates((prev) => ({ ...prev, start: value }));
+      }
+    } else if (type === "months") {
+      const monthsStr = value;
+      const monthsNum = parseFloat(value);
+      
+      if (isNaN(monthsNum) || monthsNum <= 0) {
+        setSelectedDates(prev => ({ ...prev, months: monthsStr }));
+        return;
+      }
+
+      if (selectedDates.start) {
+        const start = new Date(selectedDates.start);
+        const end = new Date(start);
+        end.setDate(end.getDate() + Math.ceil(monthsNum * 30));
+        setSelectedDates({ 
+          ...selectedDates, 
+          months: monthsStr, 
+          end: end.toISOString().split('T')[0] 
+        });
+      } else {
+        setSelectedDates(prev => ({ ...prev, months: monthsStr }));
+      }
+    } else if (type === "end") {
+      if (!selectedDates.start) {
+        setDateError("Please select a start date first.");
+        return;
+      }
+
+      const start = new Date(selectedDates.start);
+      const end = new Date(value);
+
+      if (end <= start) {
+        setDateError("End date must be after the start date.");
+        return;
+      }
+
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      const minMonths = (hoarding as any).minimumBookingMonths || 1;
+      const minDays = minMonths * 30;
+
+      if (diffDays < minDays) {
+        setDateError(`Minimum booking duration for this hoarding is ${minMonths} month${minMonths > 1 ? 's' : ''}.`);
+        setSelectedDates((prev) => ({ ...prev, end: value, months: (diffDays / 30).toFixed(1) }));
+        return;
+      }
+
+      setSelectedDates((prev) => ({ ...prev, end: value, months: (diffDays / 30).toFixed(1) }));
+    }
   };
 
   const handleBookNow = async () => {
@@ -371,6 +431,11 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
   };
   const googleMapsDirectionUrl = `https://www.google.com/maps?q=${locationCoordinates.lat},${locationCoordinates.lng}`;
 
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: browserMapsApiKey
+  });
+
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
       {/* Breadcrumbs */}
@@ -396,7 +461,7 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
         <div className="lg:col-span-2 space-y-8">
           {/* Main Image & Gallery */}
           <div className="space-y-4">
-            <div className="relative aspect-[16/9] w-full rounded-3xl overflow-hidden bg-gray-100 shadow-xl border border-white group">
+            <div className="relative aspect-video w-full rounded-3xl overflow-hidden bg-gray-100 shadow-xl border border-white group">
               <Image
                 src={hoarding.images?.[activeImageIndex] || 'https://images.unsplash.com/photo-1541535650810-10d26f5c2abb?auto=format&fit=crop&q=80&w=2000'}
                 alt={hoarding.name}
@@ -436,7 +501,7 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
                   <button
                     key={idx}
                     onClick={() => setActiveImageIndex(idx)}
-                    className={`relative w-28 aspect-video rounded-2xl overflow-hidden flex-shrink-0 transition-all border-4 snap-start shrink-0 ${activeImageIndex === idx ? 'border-blue-600 scale-95 shadow-lg shadow-blue-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                    className={`relative w-28 aspect-video rounded-2xl overflow-hidden shrink-0 transition-all border-4 snap-start ${activeImageIndex === idx ? 'border-blue-600 scale-95 shadow-lg shadow-blue-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
                   >
                     <Image src={img} alt={`Thumbnail ${idx}`} fill className="object-cover" />
                   </button>
@@ -474,18 +539,31 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
             <h3 className="text-md font-bold text-gray-900 mb-4">Select Campaign Dates</h3>
             <div className="space-y-4">
               <div className="space-y-3">
-                <div className="relative">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Start Date</span>
-                  <input 
-                    type="date"
-                    value={selectedDates.start}
-                    onChange={(e) => handleDateChange("start", e.target.value)}
-                    className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm text-gray-700 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all"
-                  />
-                  <Calendar className="absolute right-4 bottom-3 w-4 h-4 text-gray-400 pointer-events-none" />
+                <div className="flex gap-4">
+                  <div className="relative flex-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Start Date</span>
+                    <input 
+                      type="date"
+                      value={selectedDates.start}
+                      onChange={(e) => handleDateChange("start", e.target.value)}
+                      className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm text-gray-700 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all"
+                    />
+                    <Calendar className="absolute right-4 bottom-3 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
+                  <div className="relative w-24">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Months</span>
+                    <input 
+                      type="number"
+                      min="1"
+                      step="0.5"
+                      value={selectedDates.months}
+                      onChange={(e) => handleDateChange("months", e.target.value)}
+                      className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold text-blue-600 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-center"
+                    />
+                  </div>
                 </div>
                 <div className="relative">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">End Date</span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">End Date (Calculated)</span>
                   <input 
                     type="date"
                     value={selectedDates.end}
@@ -554,14 +632,20 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <h3 className="text-md font-bold text-gray-900 mb-4">Pricing Details</h3>
             <div className="space-y-4">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500 font-medium">Approx. Cost:</span>
-                <span className="text-gray-900 font-bold">₹ {hoarding.pricePerMonth || '60,000'} / Month</span>
+              <div className="flex justify-between items-start text-sm">
+                <div className="flex flex-col">
+                  <span className="text-gray-500 font-medium tracking-tight">Approx. Total Cost:</span>
+                  <span className="text-[10px] text-blue-600 font-black uppercase mt-1">
+                    Duration: {durationMonths.toFixed(1)} Months
+                  </span>
+                </div>
+                <div className="text-gray-900 font-black tracking-tight flex flex-col items-end">
+                  <span>₹ {Number(approxMonthlyCost).toLocaleString()}</span>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase mt-1">
+                    Includes GST 2.5% <span className="text-red-500">+ (18% on 2.5%)</span>
+                  </span>
+                </div>
               </div>
-              {/* <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-4">
-                <span className="text-gray-500 font-medium">Print & Mount:</span>
-                <span className="text-gray-900 font-bold text-xs uppercase">Additional ₹ 17 / Sq Feet</span>
-              </div> */}
               
               <div className="pt-2 space-y-3">
                 {wishlistRoleMessage && (
@@ -610,15 +694,14 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 overflow-hidden">
             <h3 className="text-md font-bold text-gray-900 mb-4">Location Map</h3>
             <div className="relative">
-              {!browserMapsApiKey || mapsLoadFailed ? (
+              {!browserMapsApiKey || mapsLoadFailed || loadError ? (
                 <div className="w-full h-[300px] bg-gray-50 rounded-xl flex flex-col items-center justify-center text-center p-6">
                   <MapPin className="w-6 h-6 text-[#2563eb] mb-3" />
                   <p className="text-sm font-semibold text-gray-800">
                     Interactive map unavailable
                   </p>
                   <p className="text-xs text-gray-500 mt-2 max-w-xs">
-                    Add a valid `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` to enable the
-                    embedded map for this listing.
+                    {(mapsLoadFailed || loadError) ? "Failed to load Google Maps script." : "Add a valid `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` to enable the embedded map for this listing."}
                   </p>
                   <a
                     href={googleMapsDirectionUrl}
@@ -629,30 +712,24 @@ export default function HoardingDetailClient({ hoarding }: HoardingDetailClientP
                     Open location in Google Maps
                   </a>
                 </div>
+              ) : !isLoaded ? (
+                <div className="w-full h-[300px] bg-gray-50 rounded-xl flex items-center justify-center">
+                  <Loader2 className="animate-spin text-blue-500" />
+                </div>
               ) : (
-                <LoadScript
-                  googleMapsApiKey={browserMapsApiKey}
-                  onError={() => setMapsLoadFailed(true)}
-                  loadingElement={
-                    <div className="w-full h-[300px] bg-gray-50 rounded-xl flex items-center justify-center">
-                      <Loader2 className="animate-spin text-blue-500" />
-                    </div>
-                  }
+                <GoogleMap
+                  mapContainerStyle={mapContainerStyle}
+                  center={locationCoordinates}
+                  zoom={15}
+                  options={{
+                    disableDefaultUI: true,
+                    zoomControl: true,
+                  }}
                 >
-                  <GoogleMap
-                    mapContainerStyle={mapContainerStyle}
-                    center={locationCoordinates}
-                    zoom={15}
-                    options={{
-                      disableDefaultUI: true,
-                      zoomControl: true,
-                    }}
-                  >
-                    {hoarding.location.coordinates && (
-                      <Marker position={hoarding.location.coordinates} />
-                    )}
-                  </GoogleMap>
-                </LoadScript>
+                  {hoarding.location.coordinates && (
+                    <Marker position={hoarding.location.coordinates} />
+                  )}
+                </GoogleMap>
               )}
             </div>
           </div>

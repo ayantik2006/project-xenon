@@ -33,9 +33,15 @@ export const kycSchema = z.object({
     .regex(/^[+]?[\d\s-()]+$/, "Phone number can only contain digits, +, -, (, ), and spaces")
     .transform((val) => val.replace(/[\s-()]/g, '')), // Remove formatting characters
   companyName: z.string().optional(), // Is optional but typically good to have
-  gstin: z.string().optional(),
-  pan: z.string().min(10, "PAN is required"), // made required
-  aadhaar: z.string().min(12, "Aadhaar is required"), // made required - adding a basic length check, standard is 12
+  gstin: z.string()
+    .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, "Invalid GSTIN format")
+    .optional()
+    .or(z.literal("")),
+  pan: z.string()
+    .regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format")
+    .transform(v => v.toUpperCase()),
+  aadhaar: z.string()
+    .regex(/^\d{12}$/, "Aadhaar must be exactly 12 digits"),
   address: z.string().optional(),
   documents: z.array(z.string().url()).optional(),
   acceptTerms: z

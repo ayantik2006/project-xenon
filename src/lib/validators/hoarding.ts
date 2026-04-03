@@ -21,11 +21,12 @@ export const hoardingSchema = z.object({
 
   // Commercials
   pricePerMonth: z.number().min(1, "Price per month is required"),
-  minimumBookingAmount: z.number().min(0).optional(),
+  minimumBookingAmount: z.number().min(0).default(0),
+  minimumBookingMonths: z.number().min(1).default(1),
   hoardingCode: z.string().optional(),
   trafficFrom: z.string().optional(),
-  uniqueReach: z.number().min(0).optional(),
-  uniqueFootfall: z.number().min(0).optional(),
+  uniqueReach: z.number().min(0).default(0),
+  uniqueFootfall: z.number().min(0).default(0),
 
   // Media
   images: z.array(z.string().url()).optional(),

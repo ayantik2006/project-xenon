@@ -964,6 +964,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none text-black"
                       placeholder="GST Number"
                     />
+                    {kycForm.formState.errors.gstin && (
+                      <p className="text-xs text-red-500 mt-1">
+                        {kycForm.formState.errors.gstin.message}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -972,7 +977,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     <input
                       {...kycForm.register("pan")}
                       className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none text-black"
-                      placeholder="PAN Number"
+                      placeholder="PAN Number (e.g. ABCDE1234F)"
                     />
                     {kycForm.formState.errors.pan && (
                       <p className="text-xs text-red-500 mt-1">
@@ -989,7 +994,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   <input
                     {...kycForm.register("aadhaar")}
                     className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none text-black"
-                    placeholder="Aadhaar Number"
+                    placeholder="12-digit Aadhaar Number"
                   />
                   {kycForm.formState.errors.aadhaar && (
                     <p className="text-xs text-red-500 mt-1">

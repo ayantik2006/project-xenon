@@ -54,11 +54,29 @@ export default function EditHoardingPage() {
     reset,
     formState: { errors },
   } = useForm<HoardingInput>({
-    resolver: zodResolver(hoardingSchema),
+    resolver: zodResolver(hoardingSchema) as any,
     defaultValues: {
+      name: "",
+      description: "",
+      address: "",
+      city: "",
+      area: "",
+      state: "",
+      zipCode: "",
+      latitude: 0,
+      longitude: 0,
+      width: 0,
+      height: 0,
+      pricePerMonth: 0,
       lightingType: "Non-Lit",
       type: "Billboard",
       images: [],
+      hoardingCode: "",
+      trafficFrom: "",
+      uniqueReach: 0,
+      uniqueFootfall: 0,
+      minimumBookingMonths: 1,
+      minimumBookingAmount: 0,
     },
   });
 
@@ -122,6 +140,7 @@ export default function EditHoardingPage() {
           lightingType: hoarding.lightingType,
           pricePerMonth: hoarding.pricePerMonth,
           minimumBookingAmount: hoarding.minimumBookingAmount || 0,
+          minimumBookingMonths: hoarding.minimumBookingMonths || 1,
           hoardingCode: hoarding.hoardingCode || "",
           trafficFrom: hoarding.trafficFrom || "",
           uniqueReach: hoarding.uniqueReach || 0,
@@ -269,21 +288,22 @@ export default function EditHoardingPage() {
     setValue("longitude", location.lng, { shouldValidate: true, shouldDirty: true });
   };
 
-  const onSubmit = async (data: HoardingInput) => {
+  const onSubmit = async (data: any) => {
+    const validatedData = data as HoardingInput;
     setIsSubmitting(true);
     setError("");
     setSuccess("");
 
     try {
-      if (!data.pricePerMonth || data.pricePerMonth < 1) {
+      if (!validatedData.pricePerMonth || validatedData.pricePerMonth < 1) {
         throw new Error("Price per month is required.");
       }
 
       if (
-        typeof data.latitude !== "number" ||
-        typeof data.longitude !== "number" ||
-        Number.isNaN(data.latitude) ||
-        Number.isNaN(data.longitude)
+        typeof validatedData.latitude !== "number" ||
+        typeof validatedData.longitude !== "number" ||
+        Number.isNaN(validatedData.latitude) ||
+        Number.isNaN(validatedData.longitude)
       ) {
         setShowMap(true);
         throw new Error("Please pin the hoarding on the map before updating.");
@@ -294,7 +314,7 @@ export default function EditHoardingPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(validatedData),
       });
 
       const result = await res.json();
@@ -367,7 +387,7 @@ export default function EditHoardingPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: Form Sections */}
           <div className="lg:col-span-8 space-y-8">
             
@@ -426,9 +446,7 @@ export default function EditHoardingPage() {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {images.map((img, idx) => (
-                  <div
-                    key={idx}
-                    className="relative aspect-square rounded-2xl overflow-hidden bg-gray-100 group shadow-sm border border-gray-100"
+                  <div className="relative aspect-video rounded-2xl overflow-hidden bg-gray-100 group shadow-sm border border-gray-100"
                   >
                     <img src={img} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -672,9 +690,20 @@ export default function EditHoardingPage() {
                   </div>
                 </div>
 
-                {/* Minimum Booking Amount */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Min. Booking Amount</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Min. Booking Period (Months)</label>
+                  <select
+                    {...register("minimumBookingMonths", { valueAsNumber: true })}
+                    className="w-full px-4 py-3.5 bg-gray-50 border-none rounded-xl font-bold text-gray-700 focus:ring-2 focus:ring-blue-600 outline-none appearance-none"
+                  >
+                    {[1, 2, 3, 6, 12].map(m => (
+                      <option key={m} value={m}>{m} Month{m > 1 ? 's' : ''}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Min. Booking Amount </label>
                   <div className="relative">
                     <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                     <input

@@ -67,15 +67,28 @@ export default function AddHoardingPage() {
     watch,
     formState: { errors },
   } = useForm<HoardingInput>({
-    resolver: zodResolver(hoardingSchema),
+    resolver: zodResolver(hoardingSchema) as any,
     defaultValues: {
-      lightingType: "Non-Lit", // Default
+      name: "",
+      address: "",
+      city: "",
+      area: "",
+      state: "",
+      zipCode: "",
+      latitude: 0,
+      longitude: 0,
+      width: 0,
+      height: 0,
+      pricePerMonth: 0,
+      lightingType: "Non-Lit",
       type: "Billboard",
       images: [],
       hoardingCode: "",
       trafficFrom: "",
       uniqueReach: 0,
       uniqueFootfall: 0,
+      minimumBookingMonths: 1,
+      minimumBookingAmount: 0,
     },
   });
 
@@ -211,7 +224,8 @@ export default function AddHoardingPage() {
     setValue("longitude", location.lng, { shouldValidate: true });
   };
 
-  const onSubmit = async (data: HoardingInput) => {
+  const onSubmit = async (data: any) => {
+    const validatedData = data as HoardingInput;
     setIsSubmitting(true);
     setError("");
     setSuccess("");
@@ -263,7 +277,7 @@ export default function AddHoardingPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-8">
             {/* Basic Info */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
@@ -306,18 +320,17 @@ export default function AddHoardingPage() {
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {images.map((img, idx) => (
-                  <div
-                    key={idx}
-                    className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group"
-                  >
-                    <img src={img} className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(idx)}
-                      className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X size={14} />
-                    </button>
+                  <div className="space-y-4">
+                    <div className="relative aspect-video w-full rounded-3xl overflow-hidden bg-gray-100 shadow-xl border border-white group">
+                      <img src={img} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(idx)}
+                        className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
                   </div>
                 ))}
                 <div className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors relative">
@@ -580,6 +593,22 @@ export default function AddHoardingPage() {
                     placeholder="Optional"
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none"
                   />
+                </div>
+
+                {/* Minimum Booking Period */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Min. Booking Period (Months)
+                  </label>
+                  <select 
+                    {...register("minimumBookingMonths", { valueAsNumber: true })}
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2563eb] outline-none appearance-none bg-white"
+                  >
+                    {[1, 2, 3, 6, 12].map(m => (
+                      <option key={m} value={m}>{m} Month{m > 1 ? 's' : ''}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Default is 1 month if not selected.</p>
                 </div>
 
                 {/* Minimum Booking Amount */}
