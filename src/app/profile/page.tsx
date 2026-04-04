@@ -365,6 +365,7 @@ export default function ProfilePage() {
   if (!user) return null;
 
   const displayKycStatus = normalizeKycStatus(user.kycStatus);
+  const isFullyVerified = user.role === "admin" || (user.isPhoneVerified && displayKycStatus === "approved");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 py-12 px-4 sm:px-6 lg:px-8" style={{ fontFamily: "'Chiron GoRound TC', sans-serif" }}>
@@ -376,7 +377,7 @@ export default function ProfilePage() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        <div className={isFullyVerified ? "grid grid-cols-1 md:grid-cols-12 gap-6" : "flex flex-col max-w-3xl mx-auto gap-6 w-full"}>
           {/* Box 1: Identity (Top Left) */}
           <div className="md:col-span-8 bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm flex flex-col sm:flex-row items-center gap-8 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
@@ -435,34 +436,38 @@ export default function ProfilePage() {
                 {user.emailVerified ? <CheckCircle size={16} className="text-green-500" /> : <Clock size={16} className="text-amber-500" />}
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                <div className="flex items-center gap-3">
-                  <Phone size={18} className="text-gray-400" />
-                  <span className="text-xs font-bold text-gray-600">Mobile</span>
-                </div>
-                {user.isPhoneVerified ? <CheckCircle size={16} className="text-green-500" /> : <AlertCircle size={16} className="text-red-500" />}
-              </div>
+              {user.role !== "admin" && (
+                <>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <Phone size={18} className="text-gray-400" />
+                      <span className="text-xs font-bold text-gray-600">Mobile</span>
+                    </div>
+                    {user.isPhoneVerified ? <CheckCircle size={16} className="text-green-500" /> : <AlertCircle size={16} className="text-red-500" />}
+                  </div>
 
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                <div className="flex items-center gap-3">
-                  <ShieldCheck size={18} className="text-gray-400" />
-                  <span className="text-xs font-bold text-gray-600">KYC Status</span>
-                </div>
-                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg ${
-                  displayKycStatus === "approved" ? "bg-green-100 text-green-700" :
-                  displayKycStatus === "submitted" ? "bg-amber-100 text-amber-700" :
-                  displayKycStatus === "rejected" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-500"
-                }`}>
-                  {displayKycStatus.replace("_", " ")}
-                </span>
-              </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <ShieldCheck size={18} className="text-gray-400" />
+                      <span className="text-xs font-bold text-gray-600">KYC Status</span>
+                    </div>
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg ${
+                      displayKycStatus === "approved" ? "bg-green-100 text-green-700" :
+                      displayKycStatus === "submitted" ? "bg-amber-100 text-amber-700" :
+                      displayKycStatus === "rejected" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-500"
+                    }`}>
+                      {displayKycStatus.replace("_", " ")}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
           {/* Box 3: General Info & Action (Bottom Left) */}
           <div className="md:col-span-8 bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm space-y-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              <div className="space-y-4">
+              <div className={user.role === "admin" ? "sm:col-span-2 space-y-4" : "space-y-4"}>
                 <h3 className="text-sm font-black text-[#ff6900] uppercase tracking-widest">Connect Info</h3>
                 <div className="space-y-4">
                   <div className="bg-gray-50 p-4 rounded-2xl border border-transparent hover:border-blue-100 transition-all group">
@@ -472,43 +477,47 @@ export default function ProfilePage() {
                       <span className="font-bold text-gray-900 line-clamp-1">{user.email}</span>
                     </div>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-2xl border border-transparent hover:border-blue-100 transition-all group">
-                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Secure Mobile</p>
-                    <div className="flex items-center gap-3">
-                      <Phone size={20} className="text-blue-500" />
-                      <span className="font-bold text-gray-900">{user.phone || "Not linked"}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-sm font-black text-green-600 uppercase tracking-widest">Company & Location</h3>
-                <div className="bg-gray-50 p-5 rounded-2xl border border-transparent hover:border-blue-100 transition-all h-[calc(100%-2rem)]">
-                  {user.kycDetails ? (
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3">
-                        <Building2 size={18} className="text-blue-500 mt-1" />
-                        <div>
-                          <p className="text-xs font-black text-gray-900">{user.kycDetails.companyName || "Personal Account"}</p>
-                          <p className="text-[10px] text-gray-500 mt-0.5">{user.kycDetails.address}</p>
-                        </div>
+                  {user.role !== "admin" && (
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-transparent hover:border-blue-100 transition-all group">
+                      <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Secure Mobile</p>
+                      <div className="flex items-center gap-3">
+                        <Phone size={20} className="text-blue-500" />
+                        <span className="font-bold text-gray-900">{user.phone || "Not linked"}</span>
                       </div>
-                      {user.kycDetails.gstin && (
-                        <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
-                          <FileText size={16} className="text-gray-400" />
-                          <span className="text-[10px] font-bold text-gray-600">GSTIN: {user.kycDetails.gstin}</span>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center py-4">
-                      <MapPin size={24} className="text-gray-200 mb-2" />
-                      <p className="text-xs font-bold text-gray-400">Complete KYC to add company details</p>
                     </div>
                   )}
                 </div>
               </div>
+
+              {user.role !== "admin" && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-green-600 uppercase tracking-widest">Company & Location</h3>
+                  <div className="bg-gray-50 p-5 rounded-2xl border border-transparent hover:border-blue-100 transition-all h-[calc(100%-2rem)]">
+                    {user.kycDetails ? (
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-3">
+                          <Building2 size={18} className="text-blue-500 mt-1" />
+                          <div>
+                            <p className="text-xs font-black text-gray-900">{user.kycDetails.companyName || "Personal Account"}</p>
+                            <p className="text-[10px] text-gray-500 mt-0.5">{user.kycDetails.address}</p>
+                          </div>
+                        </div>
+                        {user.kycDetails.gstin && (
+                          <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+                            <FileText size={16} className="text-gray-400" />
+                            <span className="text-[10px] font-bold text-gray-600">GSTIN: {user.kycDetails.gstin}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-center py-4">
+                        <MapPin size={24} className="text-gray-200 mb-2" />
+                        <p className="text-xs font-bold text-gray-400">Complete KYC to add company details</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="pt-4 border-t border-gray-50 flex items-center justify-between gap-6">
@@ -539,111 +548,121 @@ export default function ProfilePage() {
           </div>
 
           {/* Box 4: Conditional Action Area (Bottom Right) */}
-          {(!user.isPhoneVerified || displayKycStatus === "not_submitted" || displayKycStatus === "rejected" || displayKycStatus === "submitted") && (
-            <div className="md:col-span-4 bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm relative">
-              {!user.isPhoneVerified ? (
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-blue-50 p-2 rounded-xl text-blue-600">
-                      <Phone size={24} />
-                    </div>
-                    <h3 className="font-black text-gray-900 italic underline tracking-tight">Verify Mobile</h3>
-                  </div>
-
-                  <form onSubmit={handleSendPhoneOtp} className="space-y-4">
-                    <input
-                      type="tel"
-                      value={phoneInput}
-                      onChange={(e) => setPhoneInput(e.target.value)}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-100 bg-gray-50 focus:ring-4 focus:ring-blue-500/10 outline-none font-bold text-sm transition-all"
-                      placeholder="+91 Mobile Number"
-                    />
-                    <button
-                      type="submit"
-                      disabled={sendingPhoneOtp || !phoneInput.trim() || resendCooldown > 0}
-                      className="w-full bg-blue-600 text-white rounded-2xl py-4 font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-100 hover:scale-[1.02] transition-transform disabled:opacity-50"
-                    >
-                      {sendingPhoneOtp ? "Sending..." : otpSent ? "Resend OTP" : "Send Verification OTP"}
-                    </button>
-                  </form>
-
-                  {otpSent && (
-                    <form onSubmit={handleVerifyPhoneOtp} className="space-y-4 mt-6 animate-in slide-in-from-bottom-4">
-                      <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                        <p className="text-[10px] font-black text-blue-500 uppercase mb-2">Enter 6-Digit Code</p>
-                        <input
-                          type="text"
-                          maxLength={6}
-                          value={otpCode}
-                          onChange={(e) => setOtpCode(e.target.value)}
-                          className="w-full text-center text-3xl font-black tracking-[0.4em] bg-transparent outline-none text-blue-600"
-                        />
+          {user.role !== "admin" && (!user.isPhoneVerified || ["not_submitted", "rejected", "submitted"].includes(displayKycStatus)) && (
+            <div className="md:col-span-4 space-y-6">
+              {!user.isPhoneVerified && (
+                <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm relative">
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-blue-50 p-2 rounded-xl text-blue-600">
+                        <Phone size={24} />
                       </div>
+                      <h3 className="font-black text-gray-900 italic underline tracking-tight">Verify Mobile</h3>
+                    </div>
+
+                    <form onSubmit={handleSendPhoneOtp} className="space-y-4">
+                      <input
+                        type="tel"
+                        value={phoneInput}
+                        onChange={(e) => setPhoneInput(e.target.value)}
+                        className="w-full px-4 py-3 rounded-2xl border border-gray-100 bg-gray-50 focus:ring-4 focus:ring-blue-500/10 outline-none font-bold text-sm transition-all"
+                        placeholder="+91 Mobile Number"
+                      />
                       <button
                         type="submit"
-                        disabled={verifyingPhoneOtp || !otpCode.trim()}
-                        className="w-full bg-indigo-600 text-white rounded-2xl py-4 font-black uppercase text-xs tracking-widest shadow-lg shadow-indigo-100"
+                        disabled={sendingPhoneOtp || !phoneInput.trim() || resendCooldown > 0}
+                        className="w-full bg-blue-600 text-white rounded-2xl py-4 font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-100 hover:scale-[1.02] transition-transform disabled:opacity-50"
                       >
-                        {verifyingPhoneOtp ? "Checking..." : "Confirm OTP"}
+                        {sendingPhoneOtp ? "Sending..." : otpSent ? "Resend OTP" : "Send Verification OTP"}
                       </button>
                     </form>
-                  )}
-                  {phoneStatus && (
-                    <p className={`text-[10px] font-bold text-center ${phoneStatus.type === "success" ? "text-green-500" : "text-red-500"}`}>
-                      {phoneStatus.message}
-                    </p>
-                  )}
+
+                    {otpSent && (
+                      <form onSubmit={handleVerifyPhoneOtp} className="space-y-4 mt-6 animate-in slide-in-from-bottom-4">
+                        <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                          <p className="text-[10px] font-black text-blue-500 uppercase mb-2">Enter 6-Digit Code</p>
+                          <input
+                            type="text"
+                            maxLength={6}
+                            value={otpCode}
+                            onChange={(e) => setOtpCode(e.target.value)}
+                            className="w-full text-center text-3xl font-black tracking-[0.4em] bg-transparent outline-none text-blue-600"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={verifyingPhoneOtp || !otpCode.trim()}
+                          className="w-full bg-indigo-600 text-white rounded-2xl py-4 font-black uppercase text-xs tracking-widest shadow-lg shadow-indigo-100"
+                        >
+                          {verifyingPhoneOtp ? "Checking..." : "Confirm OTP"}
+                        </button>
+                      </form>
+                    )}
+                    {phoneStatus && (
+                      <p className={`text-[10px] font-bold text-center ${phoneStatus.type === "success" ? "text-green-500" : "text-red-500"}`}>
+                        {phoneStatus.message}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              ) : (displayKycStatus === "not_submitted" || displayKycStatus === "rejected") ? (
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-indigo-50 p-2 rounded-xl text-indigo-600">
-                      <ShieldCheck size={24} />
+              )}
+
+              {(displayKycStatus === "not_submitted" || displayKycStatus === "rejected") && (
+                <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm relative">
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-indigo-50 p-2 rounded-xl text-indigo-600">
+                        <ShieldCheck size={24} />
+                      </div>
+                      <h3 className="font-black text-gray-900 italic underline tracking-tight">KYC Verification</h3>
                     </div>
-                    <h3 className="font-black text-gray-900 italic underline tracking-tight">KYC Verification</h3>
+
+                    <p className="text-[11px] text-gray-500 font-medium">Verify your identity to unlock dashboard controls and premium features.</p>
+                    
+                    {error && <p className="text-[10px] font-bold text-red-500 bg-red-50 p-2 rounded-lg">{error}</p>}
+                    {success && <p className="text-[10px] font-bold text-green-500 bg-green-50 p-2 rounded-lg">{success}</p>}
+
+                    <form onSubmit={kycForm.handleSubmit(handleKYCSubmit)} className="space-y-4">
+                      <div className="grid grid-cols-1 gap-3">
+                        <input {...kycForm.register("companyName")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="Company Name (Optional)" />
+                        <input {...kycForm.register("gstin")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="GSTIN (Optional)" />
+                        <input {...kycForm.register("pan")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="PAN Number *" />
+                        {kycForm.formState.errors.pan && <p className="text-[9px] text-red-500 font-bold">{kycForm.formState.errors.pan.message}</p>}
+                        <input {...kycForm.register("aadhaar")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="Aadhaar Number *" />
+                        {kycForm.formState.errors.aadhaar && <p className="text-[9px] text-red-500 font-bold">{kycForm.formState.errors.aadhaar.message}</p>}
+                        <textarea {...kycForm.register("address")} rows={2} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="Registered Address *" />
+                      </div>
+
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" {...kycForm.register("acceptTerms")} className="rounded text-blue-600" />
+                        <span className="text-[9px] font-bold text-gray-500">I accept Terms & Conditions</span>
+                      </label>
+
+                      <button
+                        type="submit"
+                        disabled={kycSubmitting}
+                        className="w-full bg-blue-600 text-white rounded-2xl py-4 font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-100 hover:scale-[1.02] transition-transform disabled:opacity-50"
+                      >
+                        {kycSubmitting ? "Submitting..." : "Submit KYC Now"}
+                      </button>
+                    </form>
                   </div>
-
-                  <p className="text-[11px] text-gray-500 font-medium">Verify your identity to unlock dashboard controls and premium features.</p>
-                  
-                  {error && <p className="text-[10px] font-bold text-red-500 bg-red-50 p-2 rounded-lg">{error}</p>}
-                  {success && <p className="text-[10px] font-bold text-green-500 bg-green-50 p-2 rounded-lg">{success}</p>}
-
-                  <form onSubmit={kycForm.handleSubmit(handleKYCSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-1 gap-3">
-                      <input {...kycForm.register("companyName")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="Company Name (Optional)" />
-                      <input {...kycForm.register("gstin")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="GSTIN (Optional)" />
-                      <input {...kycForm.register("pan")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="PAN Number *" />
-                      {kycForm.formState.errors.pan && <p className="text-[9px] text-red-500 font-bold">{kycForm.formState.errors.pan.message}</p>}
-                      <input {...kycForm.register("aadhaar")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="Aadhaar Number *" />
-                      {kycForm.formState.errors.aadhaar && <p className="text-[9px] text-red-500 font-bold">{kycForm.formState.errors.aadhaar.message}</p>}
-                      <textarea {...kycForm.register("address")} rows={2} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="Registered Address *" />
+                </div>
+              )}
+              
+              {displayKycStatus === "submitted" && (
+                <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm relative">
+                  <div className="flex flex-col items-center justify-center h-full text-center py-10 space-y-4">
+                    <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 animate-pulse">
+                      <Clock size={40} />
                     </div>
-
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" {...kycForm.register("acceptTerms")} className="rounded text-blue-600" />
-                      <span className="text-[9px] font-bold text-gray-500">I accept Terms & Conditions</span>
-                    </label>
-
-                    <button
-                      type="submit"
-                      disabled={kycSubmitting}
-                      className="w-full bg-blue-600 text-white rounded-2xl py-4 font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-100 hover:scale-[1.02] transition-transform disabled:opacity-50"
-                    >
-                      {kycSubmitting ? "Submitting..." : "Submit KYC Now"}
-                    </button>
-                  </form>
-                </div>
-              ) : displayKycStatus === "submitted" ? (
-                <div className="flex flex-col items-center justify-center h-full text-center py-10 space-y-4">
-                  <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 animate-pulse">
-                    <Clock size={40} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-gray-900 italic">Reviewing KYC</h3>
-                    <p className="text-xs text-gray-500 font-medium px-4 mt-2">Our team is verifying your details. This usually takes 24-48 hours.</p>
+                    <div>
+                      <h3 className="text-xl font-black text-gray-900 italic">Reviewing KYC</h3>
+                      <p className="text-xs text-gray-500 font-medium px-4 mt-2">Our team is verifying your details. This usually takes 24-48 hours.</p>
+                    </div>
                   </div>
                 </div>
-              ) : null}
+              )}
             </div>
           )}
         </div>
