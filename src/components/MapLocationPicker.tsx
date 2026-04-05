@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
+import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import { getAddressFromCoordinates } from "@/lib/googleMaps";
 import { MapPin, Loader2 } from "lucide-react";
 
@@ -16,6 +16,7 @@ interface MapLocationPickerProps {
     lng: number;
   }) => void;
   initialCenter?: { lat: number; lng: number };
+  searchAddress?: string;
 }
 
 const mapContainerStyle = {
@@ -33,6 +34,7 @@ const defaultCenter = {
 export default function MapLocationPicker({
   onLocationSelect,
   initialCenter,
+  searchAddress,
 }: MapLocationPickerProps) {
   const browserMapsApiKey =
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || "";
@@ -42,8 +44,32 @@ export default function MapLocationPicker({
     lng: number;
   } | null>(initialCenter || null);
   const [mapCenter, setMapCenter] = useState(initialCenter || defaultCenter);
+  const [mapZoom, setMapZoom] = useState(initialCenter ? 15 : 5);
   const [loading, setLoading] = useState(false);
   const [mapsLoadFailed, setMapsLoadFailed] = useState(false);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: browserMapsApiKey,
+  });
+
+  useEffect(() => {
+    if (isLoaded && searchAddress && !markerPosition) {
+      const geocoder = new window.google.maps.Geocoder();
+      const cleanAddress = searchAddress.replace(/,/g, "").trim();
+      
+      if (cleanAddress.length > 3) {
+        geocoder.geocode({ address: searchAddress + ", India" }, (results, status) => {
+          if (status === "OK" && results?.[0]) {
+            const lat = results[0].geometry.location.lat();
+            const lng = results[0].geometry.location.lng();
+            setMapCenter({ lat, lng });
+            setMapZoom(14);
+          }
+        });
+      }
+    }
+  }, [isLoaded, searchAddress, markerPosition]);
 
   const handleMapClick = useCallback(
     async (e: google.maps.MapMouseEvent) => {
@@ -112,14 +138,16 @@ export default function MapLocationPicker({
     );
   };
 
-  if (!browserMapsApiKey || mapsLoadFailed) {
+  if (!browserMapsApiKey || mapsLoadFailed || loadError) {
     return (
       <div className="w-full h-[400px] bg-gray-100 rounded-xl flex items-center justify-center text-gray-500">
         <div className="text-center">
           <MapPin className="mx-auto mb-2" size={32} />
           <p>Google Maps is unavailable</p>
           <p className="text-xs mt-1">
-            Add a valid `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` to enable map pinning.
+            {mapsLoadFailed || loadError
+              ? "Failed to load Google Maps script."
+              : "Add a valid `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` to enable map pinning."}
           </p>
         </div>
       </div>
@@ -142,34 +170,33 @@ export default function MapLocationPicker({
           {loading ? "Getting location..." : "Use Current Location"}
         </button>
       </div>
-      <LoadScript
-        googleMapsApiKey={browserMapsApiKey}
-        onError={() => setMapsLoadFailed(true)}
-        loadingElement={
+
+      <div className="relative">
+        {!isLoaded ? (
           <div className="w-full h-[400px] bg-gray-100 rounded-xl flex items-center justify-center">
             <Loader2 className="animate-spin text-[#2563eb]" size={32} />
           </div>
-        }
-      >
-        <GoogleMap
-          mapContainerStyle={mapContainerStyle}
-          zoom={markerPosition ? 15 : 5}
-          center={mapCenter}
-          onClick={handleMapClick}
-          options={{
-            streetViewControl: false,
-            mapTypeControl: false,
-            fullscreenControl: false,
-          }}
-        >
-          {markerPosition && (
-            <Marker
-              position={markerPosition}
-              animation={google.maps.Animation.DROP}
-            />
-          )}
-        </GoogleMap>
-      </LoadScript>
+        ) : (
+          <GoogleMap
+            mapContainerStyle={mapContainerStyle}
+            zoom={markerPosition ? 15 : mapZoom}
+            center={mapCenter}
+            onClick={handleMapClick}
+            options={{
+              streetViewControl: false,
+              mapTypeControl: false,
+              fullscreenControl: false,
+            }}
+          >
+            {markerPosition && (
+              <Marker
+                position={markerPosition}
+                animation={google.maps.Animation.DROP}
+              />
+            )}
+          </GoogleMap>
+        )}
+      </div>
 
       {markerPosition && (
         <p className="text-xs text-green-600 bg-green-50 px-3 py-2 rounded-lg">

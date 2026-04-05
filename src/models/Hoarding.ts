@@ -22,6 +22,7 @@ export interface IHoarding extends Document {
   lightingType: 'Lit' | 'Non-Lit' | 'Front Lit' | 'Back Lit';
   pricePerMonth: number;
   minimumBookingAmount: number;
+  minimumBookingMonths: number;
   images: string[];
   owner: mongoose.Types.ObjectId;
   status: 'pending' | 'approved' | 'rejected';
@@ -69,6 +70,7 @@ const HoardingSchema: Schema<IHoarding> = new Schema({
   },
   pricePerMonth: { type: Number, required: true },
   minimumBookingAmount: { type: Number, default: 0 },
+  minimumBookingMonths: { type: Number, default: 1 },
   images: [{ type: String }],
   owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   status: {  

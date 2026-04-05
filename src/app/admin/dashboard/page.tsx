@@ -840,13 +840,18 @@ export default function AdminDashboard() {
                         </p>
                       </div>
 
-                      <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                      <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 relative overflow-hidden">
                         <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                           GST
                         </p>
-                        <p className="mt-4 text-2xl font-bold text-gray-900">
-                          {platformSettings?.gstPercent ?? 2.5}%
-                        </p>
+                        <div className="mt-4 flex flex-col">
+                          <p className="text-2xl font-bold text-gray-900">
+                            {platformSettings?.gstPercent ?? 2.5}%
+                          </p>
+                          <p className="text-[10px] font-black text-red-500 mt-1 uppercase tracking-tighter">
+                            + (18% on {platformSettings?.gstPercent ?? 2.5}%)
+                          </p>
+                        </div>
                       </div>
                     </div>
 
