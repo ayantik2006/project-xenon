@@ -17,12 +17,16 @@ import {
 import {
   signupSchema,
   loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
   otpSchema,
   kycSchema,
   type SignupInput,
   type LoginInput,
   type OTPInput,
   type KYCInput,
+  type ForgotPasswordInput,
+  type ResetPasswordInput,
 } from "@/lib/validators/user";
 
 interface AuthModalProps {
@@ -30,7 +34,14 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-type Step = "role" | "auth" | "verify-email" | "kyc-choice" | "kyc" | "verify-phone";
+type Step =
+  | "role"
+  | "auth"
+  | "forgot-password"
+  | "verify-email"
+  | "kyc-choice"
+  | "kyc"
+  | "verify-phone";
 type Role = "buyer" | "vendor" | "admin";
 type AuthMode = "login" | "signup";
 type AuthApiResponse = {
@@ -77,6 +88,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [emailResendCooldown, setEmailResendCooldown] = useState(0);
   const [phoneResendCooldown, setPhoneResendCooldown] = useState(0);
+  const [resetCodeSent, setResetCodeSent] = useState(false);
+  const [resetOtp, setResetOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const signupForm = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
@@ -91,8 +106,24 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     resolver: zodResolver(otpSchema),
   });
 
+  const forgotPasswordForm = useForm<ForgotPasswordInput>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: { email: "" },
+  });
+
+  const resetPasswordForm = useForm<ResetPasswordInput>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      email: "",
+      otp: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
   const kycForm = useForm<KYCInput>({
     resolver: zodResolver(kycSchema),
+    mode: "onChange",
   });
 
   const resetModalState = () => {
@@ -108,9 +139,20 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setTermsAccepted(false);
     setEmailResendCooldown(0);
     setPhoneResendCooldown(0);
+    setResetCodeSent(false);
+    setResetOtp("");
+    setNewPassword("");
+    setConfirmPassword("");
     signupForm.reset({ name: "", email: "", password: "", role: "buyer" });
     loginForm.reset({ email: "", password: "" });
     otpForm.reset({ otp: "" });
+    forgotPasswordForm.reset({ email: "" });
+    resetPasswordForm.reset({
+      email: "",
+      otp: "",
+      password: "",
+      confirmPassword: "",
+    });
     kycForm.reset({
       phone: "",
       companyName: "",
@@ -169,9 +211,20 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       setTermsAccepted(false);
       setEmailResendCooldown(0);
       setPhoneResendCooldown(0);
+      setResetCodeSent(false);
+      setResetOtp("");
+      setNewPassword("");
+      setConfirmPassword("");
       signupForm.reset({ name: "", email: "", password: "", role: "buyer" });
       loginForm.reset({ email: "", password: "" });
       otpForm.reset({ otp: "" });
+      forgotPasswordForm.reset({ email: "" });
+      resetPasswordForm.reset({
+        email: "",
+        otp: "",
+        password: "",
+        confirmPassword: "",
+      });
       kycForm.reset({
         phone: "",
         companyName: "",
@@ -182,7 +235,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         documents: [],
       });
     }
-  }, [isOpen, kycForm, loginForm, otpForm, signupForm]);
+  }, [
+    forgotPasswordForm,
+    isOpen,
+    kycForm,
+    loginForm,
+    otpForm,
+    resetPasswordForm,
+    signupForm,
+  ]);
 
   useEffect(() => {
     if (emailResendCooldown <= 0) return;
@@ -301,6 +362,110 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPasswordStart = () => {
+    const loginEmail = loginForm.getValues("email")?.trim() || "";
+
+    setStep("forgot-password");
+    setError("");
+    setNotice("");
+    setResetCodeSent(false);
+    setResetOtp("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setEmail(loginEmail);
+    forgotPasswordForm.reset({ email: loginEmail });
+    resetPasswordForm.reset({
+      email: loginEmail,
+      otp: "",
+      password: "",
+      confirmPassword: "",
+    });
+  };
+
+  const handleForgotPasswordRequest = async (data: ForgotPasswordInput) => {
+    setError("");
+    setNotice("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const result: AuthApiResponse = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || "Could not send the reset code");
+      }
+
+      const nextEmail = result.email || data.email;
+      setEmail(nextEmail);
+      setResetCodeSent(true);
+      setEmailResendCooldown(result.resendAvailableIn ?? 60);
+      setNotice(result.message || "We sent a password reset code to your email.");
+      forgotPasswordForm.reset({ email: nextEmail });
+      resetPasswordForm.setValue("email", nextEmail);
+      resetPasswordForm.setValue("otp", "");
+      resetPasswordForm.setValue("password", "");
+      resetPasswordForm.setValue("confirmPassword", "");
+      setResetOtp("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Could not send the reset code",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (data: ResetPasswordInput) => {
+    setError("");
+    setNotice("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const result: AuthApiResponse = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || "Could not reset your password");
+      }
+
+      setNotice(
+        result.message ||
+          "Password updated successfully. Please log in with your new password.",
+      );
+      setStep("auth");
+      setAuthMode("login");
+      setResetCodeSent(false);
+      setResetOtp("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setEmailResendCooldown(0);
+      loginForm.reset({ email: data.email, password: "" });
+      forgotPasswordForm.reset({ email: data.email });
+      resetPasswordForm.reset({
+        email: data.email,
+        otp: "",
+        password: "",
+        confirmPassword: "",
+      });
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Could not reset your password",
+      );
     } finally {
       setLoading(false);
     }
@@ -446,6 +611,40 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   };
 
+  const handleResendResetCode = async () => {
+    setError("");
+    setNotice("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/resend-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, type: "reset" }),
+      });
+      const result: AuthApiResponse & { retryAfter?: number } = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 429) {
+          setEmailResendCooldown(result.retryAfter ?? 0);
+        }
+
+        throw new Error(result.error || "Could not resend the reset code");
+      }
+
+      setEmailResendCooldown(result.resendAvailableIn ?? 60);
+      setNotice(result.message || "A new reset code has been sent.");
+      setResetOtp("");
+      resetPasswordForm.setValue("otp", "");
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Could not resend the reset code",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleResendPhone = async () => {
     setError("");
     setNotice("");
@@ -480,6 +679,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       setLoading(false);
     }
   };
+
+  const currentStepOrder =
+    step === "forgot-password" ? ["auth", "forgot-password"] : stepOrder;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -533,11 +735,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <div className="h-full flex flex-col justify-center">
             {/* Steps Visual Indicator (Optional) */}
             <div className="mb-6 flex gap-2">
-              {stepOrder.map((s, i) => (
+              {currentStepOrder.map((s, i) => (
                 <div
                   key={s}
                   className={`h-1 flex-1 rounded-full ${
-                    stepOrder.indexOf(step) >= i ? "bg-[#2563eb]" : "bg-gray-200"
+                    currentStepOrder.indexOf(step) >= i
+                      ? "bg-[#2563eb]"
+                      : "bg-gray-200"
                   }`}
                 />
               ))}
@@ -551,6 +755,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   : authMode === "signup"
                     ? "Create Account"
                     : "Welcome Back")}
+              {step === "forgot-password" && "Reset Your Password"}
               {step === "verify-email" && "Verify Your Email"}
               {step === "kyc-choice" && "KYC Verification"}
               {step === "kyc" && "Complete KYC"}
@@ -564,6 +769,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   : authMode === "signup"
                   ? "Enter your details to register"
                   : "Login to access your dashboard")}
+              {step === "forgot-password" &&
+                (resetCodeSent
+                  ? `Enter the 6-digit reset code sent to ${email}`
+                  : "Enter your email and we will send you a reset code")}
               {step === "verify-email" && `We sent a code to ${email}`}
               {step === "kyc-choice" &&
                 "KYC is required before booking. Verify now or come back later."}
@@ -716,6 +925,18 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   )}
                 </div>
 
+                {authMode === "login" && (
+                  <div className="-mt-1 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleForgotPasswordStart}
+                      className="text-sm text-[#2563eb] hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
+
                 {authMode === "signup" && (
                   <div className="flex items-start gap-2">
                     <input
@@ -820,6 +1041,163 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         : "New here? Create Account"}
                     </button>
                   )}
+                </div>
+              </form>
+            )}
+
+            {step === "forgot-password" && (
+              <form
+                onSubmit={
+                  resetCodeSent
+                    ? resetPasswordForm.handleSubmit(handleResetPasswordSubmit)
+                    : forgotPasswordForm.handleSubmit(handleForgotPasswordRequest)
+                }
+                className="space-y-4"
+              >
+                <div>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <input
+                      type="email"
+                      autoComplete="email"
+                      {...forgotPasswordForm.register("email", {
+                        onChange: (event) => {
+                          const nextEmail = event.target.value;
+                          setEmail(nextEmail);
+                          resetPasswordForm.setValue("email", nextEmail);
+                        },
+                      })}
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-shadow text-black"
+                      placeholder="Email Address"
+                      disabled={resetCodeSent}
+                    />
+                  </div>
+                  {forgotPasswordForm.formState.errors.email && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {forgotPasswordForm.formState.errors.email.message}
+                    </p>
+                  )}
+                </div>
+
+                {resetCodeSent && (
+                  <>
+                    <div>
+                      <div className="relative">
+                        <ShieldCheck className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                        <input
+                          maxLength={6}
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          {...resetPasswordForm.register("otp", {
+                            onChange: (event) => setResetOtp(event.target.value),
+                          })}
+                          value={resetOtp}
+                          className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-shadow text-black"
+                          placeholder="6-digit reset code"
+                        />
+                      </div>
+                      {resetPasswordForm.formState.errors.otp && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {resetPasswordForm.formState.errors.otp.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                        <input
+                          type="password"
+                          autoComplete="new-password"
+                          {...resetPasswordForm.register("password", {
+                            onChange: (event) => setNewPassword(event.target.value),
+                          })}
+                          value={newPassword}
+                          className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-shadow text-black"
+                          placeholder="New Password"
+                        />
+                      </div>
+                      {resetPasswordForm.formState.errors.password && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {resetPasswordForm.formState.errors.password.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                        <input
+                          type="password"
+                          autoComplete="new-password"
+                          {...resetPasswordForm.register("confirmPassword", {
+                            onChange: (event) =>
+                              setConfirmPassword(event.target.value),
+                          })}
+                          value={confirmPassword}
+                          className="w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition-shadow text-black"
+                          placeholder="Confirm New Password"
+                        />
+                      </div>
+                      {resetPasswordForm.formState.errors.confirmPassword && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {resetPasswordForm.formState.errors.confirmPassword.message}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#2563eb] text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading
+                    ? "Processing..."
+                    : resetCodeSent
+                      ? "Update Password"
+                      : "Send Reset Code"}
+                </button>
+
+                {resetCodeSent && (
+                  <button
+                    type="button"
+                    onClick={handleResendResetCode}
+                    disabled={loading || emailResendCooldown > 0}
+                    className="w-full text-sm text-gray-500 hover:text-[#2563eb] disabled:cursor-not-allowed disabled:text-gray-400"
+                  >
+                    {emailResendCooldown > 0
+                      ? `Resend Code in ${formatCountdown(emailResendCooldown)}`
+                      : "Resend Code"}
+                  </button>
+                )}
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep("auth");
+                      setAuthMode("login");
+                      setError("");
+                      setNotice("");
+                      setResetCodeSent(false);
+                      setResetOtp("");
+                      setNewPassword("");
+                      setConfirmPassword("");
+                      setEmailResendCooldown(0);
+                      resetPasswordForm.reset({
+                        email,
+                        otp: "",
+                        password: "",
+                        confirmPassword: "",
+                      });
+                      loginForm.setValue("email", email);
+                    }}
+                    className="text-[#2563eb] text-sm hover:underline"
+                  >
+                    Back to Login
+                  </button>
                 </div>
               </form>
             )}
@@ -961,7 +1339,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     </label>
                     <input
                       {...kycForm.register("gstin")}
-                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none text-black"
+                      onInput={(e) => e.currentTarget.value = e.currentTarget.value.toUpperCase()}
+                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none text-black uppercase"
                       placeholder="GST Number"
                     />
                     {kycForm.formState.errors.gstin && (
@@ -976,7 +1355,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     </label>
                     <input
                       {...kycForm.register("pan")}
-                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none text-black"
+                      onInput={(e) => e.currentTarget.value = e.currentTarget.value.toUpperCase()}
+                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none text-black uppercase"
                       placeholder="PAN Number (e.g. ABCDE1234F)"
                     />
                     {kycForm.formState.errors.pan && (
@@ -1013,7 +1393,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !kycForm.formState.isValid}
                   className="w-full bg-[#2563eb] text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
                   {loading ? "Submitting..." : "Submit & Verify Phone"}

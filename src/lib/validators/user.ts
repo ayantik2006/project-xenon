@@ -13,6 +13,24 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    email: z.string().email("Invalid email address"),
+    otp: z.string()
+      .length(6, "OTP must be 6 digits")
+      .regex(/^\d+$/, "OTP must contain only numbers"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
 export const phoneSchema = z.object({
   phone: z.string()
     .min(10, "Phone number must be at least 10 digits")
@@ -58,6 +76,8 @@ export const profileKycSchema = kycSchema.omit({
 
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type PhoneInput = z.infer<typeof phoneSchema>;
 export type OTPInput = z.infer<typeof otpSchema>;
 export type KYCInput = z.infer<typeof kycSchema>;

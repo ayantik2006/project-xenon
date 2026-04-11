@@ -318,21 +318,21 @@ export default function AboutPage() {
               <div className="flex flex-col items-center text-center">
                 <div className="w-32 h-32 rounded-full mb-6 overflow-hidden border-4 border-slate-50 shadow-md group-hover:border-blue-100 transition-colors">
                   <Image
-                  src={"https://res.cloudinary.com/du5qoczcn/image/upload/v1773081060/IMG_2177_1_og5vqm.jpg"}
-                     alt="Omkar Ashutosh Behera"
+                  src={"/pulin.jpeg"}
+                     alt="Pulin Mohapatra"
                     width={128}
                     height={128}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <h3 className="text-xl font-black text-slate-900 mb-2">
-                  Omkar Ashutosh Behera
+                  Pulin Mohapatra
                 </h3>
                 <p className="text-[#2563eb] font-bold mb-3">
                   Head of Business Development
                 </p>
                 <p className="text-sm font-medium text-slate-700 leading-relaxed">
-                  Electronics & Communication
+                  Mechanical Engineering
                   <br />
                   NIT Rourkela
                 </p>

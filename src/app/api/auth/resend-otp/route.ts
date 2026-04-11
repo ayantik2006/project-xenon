@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
-import { sendOTPEmail } from '@/lib/email';
+import { sendOTPEmail, sendPasswordResetOTPEmail } from '@/lib/email';
 import { sendOTPSMS } from '@/lib/sms';
 import {
     createPendingOTP,
+    generateOTP,
     getOTPRetryAfterSeconds,
     keepLatestOTP,
     normalizeEmail,
@@ -29,13 +30,19 @@ export async function POST(req: Request) {
         // Check if user exists
         let user;
         if (email) {
-            user = await User.findOne({ email });
+            user = await User.findOne({ email }).select('+password');
             if (!user) {
                 return NextResponse.json({ error: "User not found" }, { status: 404 });
             }
 
-            if (user.emailVerified) {
+            if (type === 'verification' && user.emailVerified) {
                 return NextResponse.json({ error: "Email already verified" }, { status: 400 });
+            }
+
+            if (type === 'reset' && !user.password) {
+                return NextResponse.json({
+                    error: "This account uses Google sign-in. Please continue with Google instead."
+                }, { status: 400 });
             }
         } else if (phone) {
             user = await User.findOne({ phone });
@@ -60,18 +67,22 @@ export async function POST(req: Request) {
             }, { status: 429 });
         }
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = generateOTP();
         const recipient = email ? { email } : { phone: phone! };
         const otpRecord = await createPendingOTP(recipient, type, otp);
 
         // Send OTP
         if (email) {
-            const result = await sendOTPEmail(email, otp);
+            const result = type === 'reset'
+                ? await sendPasswordResetOTPEmail(email, otp)
+                : await sendOTPEmail(email, otp);
             if (!result.success) {
                 console.error('Failed to send OTP email:', result.error);
                 await otpRecord.deleteOne();
                 return NextResponse.json({
-                    error: "We could not send the verification email right now. Please try again shortly."
+                    error: type === 'reset'
+                        ? "We could not send the password reset email right now. Please try again shortly."
+                        : "We could not send the verification email right now. Please try again shortly."
                 }, { status: 502 });
             }
         } else if (phone) {

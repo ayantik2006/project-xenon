@@ -140,6 +140,67 @@ Copyright ${new Date().getFullYear()} HoardSpace. All rights reserved.
   });
 }
 
+export async function sendPasswordResetOTPEmail(
+  email: string,
+  otp: string,
+): Promise<EmailResult> {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Reset Your Password - HoardSpace</title>
+      </head>
+      <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">HoardSpace</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">Password reset request</p>
+        </div>
+
+        <div style="background: #ffffff; padding: 40px 30px; border: 1px solid #e0e0e0; border-top: none;">
+          <h2 style="color: #2563eb; margin-top: 0;">Reset Your Password</h2>
+
+          <p style="font-size: 16px; color: #555;">Use the verification code below to reset your HoardSpace password.</p>
+
+          <div style="background: #f8f9fa; border: 2px dashed #2563eb; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
+            <div style="font-size: 14px; color: #666; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Your Reset Code</div>
+            <div style="font-size: 36px; font-weight: bold; color: #2563eb; letter-spacing: 8px; font-family: 'Courier New', monospace;">${otp}</div>
+          </div>
+
+          <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <p style="margin: 0; font-size: 14px; color: #856404;">
+              <strong>Security Notice:</strong> This code is valid for <strong>${OTP_EXPIRY_MINUTES} minutes</strong>. If you did not request a password reset, you can safely ignore this email.
+            </p>
+          </div>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0; border-top: none;">
+          <p style="margin: 0; font-size: 12px; color: #999;">
+            &copy; ${new Date().getFullYear()} HoardSpace. All rights reserved.
+          </p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = `
+Your HoardSpace password reset code is: ${otp}
+
+This code is valid for ${OTP_EXPIRY_MINUTES} minutes. If you did not request a password reset, you can ignore this email.
+
+Copyright ${new Date().getFullYear()} HoardSpace. All rights reserved.
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: 'Reset Your Password - HoardSpace',
+    html,
+    text,
+    from: authFromEmail,
+  });
+}
+
 export async function sendWelcomeEmail(
   email: string,
   name: string,

@@ -88,6 +88,7 @@ export default function ProfilePage() {
 
   const kycForm = useForm<ProfileKYCInput>({
     resolver: zodResolver(profileKycSchema),
+    mode: "onChange",
   });
 
   const loadUser = useCallback(async () => {
@@ -625,8 +626,9 @@ export default function ProfilePage() {
                     <form onSubmit={kycForm.handleSubmit(handleKYCSubmit)} className="space-y-4">
                       <div className="grid grid-cols-1 gap-3">
                         <input {...kycForm.register("companyName")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="Company Name (Optional)" />
-                        <input {...kycForm.register("gstin")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="GSTIN (Optional)" />
-                        <input {...kycForm.register("pan")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="PAN Number *" />
+                        <input {...kycForm.register("gstin")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.toUpperCase()} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs uppercase" placeholder="GSTIN (Optional)" />
+                        {kycForm.formState.errors.gstin && <p className="text-[9px] text-red-500 font-bold">{kycForm.formState.errors.gstin.message}</p>}
+                        <input {...kycForm.register("pan")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.toUpperCase()} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs uppercase" placeholder="PAN Number *" />
                         {kycForm.formState.errors.pan && <p className="text-[9px] text-red-500 font-bold">{kycForm.formState.errors.pan.message}</p>}
                         <input {...kycForm.register("aadhaar")} className="w-full px-4 py-2.5 rounded-xl border-none bg-gray-50 focus:ring-2 focus:ring-blue-500/10 font-bold text-xs" placeholder="Aadhaar Number *" />
                         {kycForm.formState.errors.aadhaar && <p className="text-[9px] text-red-500 font-bold">{kycForm.formState.errors.aadhaar.message}</p>}
@@ -640,7 +642,7 @@ export default function ProfilePage() {
 
                       <button
                         type="submit"
-                        disabled={kycSubmitting}
+                        disabled={kycSubmitting || !kycForm.formState.isValid}
                         className="w-full bg-blue-600 text-white rounded-2xl py-4 font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-100 hover:scale-[1.02] transition-transform disabled:opacity-50"
                       >
                         {kycSubmitting ? "Submitting..." : "Submit KYC Now"}

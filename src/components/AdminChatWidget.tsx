@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MessageCircle, X, Send, User, Bot } from "lucide-react";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import AuthModal from "./AuthModal";
 
 interface WidgetMessage {
   id: string;
@@ -44,6 +45,7 @@ export default function AdminChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messageInput, setMessageInput] = useState("");
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [adminMessages, setAdminMessages] = useState<WidgetMessage[]>([]);
   const [adminChatLoading, setAdminChatLoading] = useState(false);
   const [adminChatError, setAdminChatError] = useState<string | null>(null);
@@ -258,8 +260,24 @@ export default function AdminChatWidget() {
             )}
 
             {!canUseAdminChat && (
-              <div className="relative z-10 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700">
-                Sign in as a buyer or vendor to chat with the admin team here.
+              <div className="relative z-10 rounded-lg bg-blue-50 px-3 py-3 text-sm text-blue-700 space-y-3">
+                <p>List and book hoardings online.</p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAuthOpen(true)}
+                    className="rounded-full bg-[#0f4a8a] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#1e3a8a]"
+                  >
+                    Login
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAuthOpen(true)}
+                    className="rounded-full border border-[#0f4a8a]/20 bg-white px-4 py-2 text-xs font-semibold text-[#0f4a8a] transition-colors hover:bg-blue-50"
+                  >
+                    Sign Up
+                  </button>
+                </div>
               </div>
             )}
 
@@ -367,6 +385,8 @@ export default function AdminChatWidget() {
           />
         </div>
       </button>
+
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </div>
   );
 }

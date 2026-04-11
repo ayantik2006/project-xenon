@@ -3,7 +3,7 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Mail, Phone, MapPin, Twitter, Linkedin, Youtube } from "lucide-react";
+import { Mail, Phone, MapPin, Linkedin, Youtube, Instagram } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 export default function Footer() {
@@ -58,7 +58,7 @@ export default function Footer() {
               />
             </Link>
             <p className="text-xs font-semibold tracking-wide text-slate-600 mb-6 max-w-sm">
-              India's leading platform for booking premium outdoor advertising
+              India&apos;s leading platform for booking premium outdoor advertising
               spaces. Connect with verified vendors and grow your brand's
               visibility across top cities.
             </p>
@@ -93,26 +93,10 @@ export default function Footer() {
               </a>
             </div>
 
-            {/* Company Registration Details */}
-            <div className="mt-6 pt-6 border-t border-slate-300/30">
-              <h4 className="text-slate-500 font-black text-[10px] uppercase tracking-[0.2em] mb-4">
-                Company Details
-              </h4>
-              <div className="space-y-1.5 text-[11px] font-bold tracking-wider text-slate-700">
-                <p >
-                  Hoardspace Bookings Private Limited
-                </p>
-                <p>CIN NO: U63120OD2025PTC051640</p>
-                <p>PAN NO: AAICH3418E</p>
-                <p>TAN NO: BBNH01998D</p>
-                <p>CKYC NO: 90003349208072</p>
-                <p>GSTIN NO: 21AAICH3418E1Z3</p>
-              </div>
-            </div>
           </div>
 
           {/* Quick Links */}
-          <div>
+          {/* <div>
             <h3 className="text-slate-500 font-black text-[10px] uppercase tracking-[0.2em] mb-4">
               Quick Links
             </h3>
@@ -128,7 +112,7 @@ export default function Footer() {
                 </li>
               ))}
             </ul>
-          </div>
+          </div> */}
 
           {/* Categories */}
           <div>
@@ -167,6 +151,23 @@ export default function Footer() {
               ))}
             </ul>
           </div>
+
+          {/* Company Registration Details */}
+          <div>
+            <h3 className="text-slate-500 font-black text-[10px] uppercase tracking-[0.2em] mb-4">
+              Company Details
+            </h3>
+            <div className="space-y-1.5 text-[11px] font-bold tracking-wider text-slate-700">
+              <p>
+                Hoardspace Bookings Private Limited
+              </p>
+              <p>CIN NO: U63120OD2025PTC051640</p>
+              <p>PAN NO: AAICH3418E</p>
+              <p>TAN NO: BBNH01998D</p>
+              <p>CKYC NO: 90003349208072</p>
+              <p>GSTIN NO: 21AAICH3418E1Z3</p>
+            </div>
+          </div>
         </div>
 
         {/* Social Links */}
@@ -204,6 +205,15 @@ export default function Footer() {
                 >
                   <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932 6.064-6.932zm-1.294 19.497h2.039L6.486 3.24H4.298l13.31 17.41z" />
                 </svg>
+              </a>
+              <a
+                href="https://www.instagram.com/hoardspace/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full bg-[linear-gradient(135deg,#f58529,#dd2a7b,#8134af,#515bd4)] flex items-center justify-center transition-colors"
+                aria-label="Instagram"
+              >
+                <Instagram size={18} />
               </a>
               <a
                 href="https://www.youtube.com/@HoardSpace"

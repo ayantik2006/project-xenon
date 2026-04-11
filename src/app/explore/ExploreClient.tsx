@@ -146,6 +146,7 @@ export default function ExploreClient({ initialHoardings, initialCity = "" }: { 
                 <span className="capitalize">{searchQuery}</span>
               ) : (
                 <>Top <span className="text-[#2563eb]">Cities</span></>
+
               )}
             </h1>
             
