@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Script from "next/script";
@@ -139,7 +139,7 @@ const getBookingStatusClasses = (status: Booking["status"]) => {
   }
 };
 
-export default function BuyerDashboard() {
+function BuyerDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -1107,5 +1107,13 @@ export default function BuyerDashboard() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function BuyerDashboard() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-white"><div className="flex flex-col items-center gap-4"><Loader2 className="w-12 h-12 animate-spin text-[#2563eb]" /><p className="text-gray-500 font-medium animate-pulse">Loading Your Portal...</p></div></div>}>
+      <BuyerDashboardContent />
+    </Suspense>
   );
 }
