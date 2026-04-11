@@ -58,7 +58,7 @@ export default function Footer() {
               />
             </Link>
             <p className="text-xs font-semibold tracking-wide text-slate-600 mb-6 max-w-sm">
-              India's leading platform for booking premium outdoor advertising
+              India&apos;s leading platform for booking premium outdoor advertising
               spaces. Connect with verified vendors and grow your brand's
               visibility across top cities.
             </p>
@@ -93,26 +93,10 @@ export default function Footer() {
               </a>
             </div>
 
-            {/* Company Registration Details */}
-            <div className="mt-6 pt-6 border-t border-slate-300/30">
-              <h4 className="text-slate-500 font-black text-[10px] uppercase tracking-[0.2em] mb-4">
-                Company Details
-              </h4>
-              <div className="space-y-1.5 text-[11px] font-bold tracking-wider text-slate-700">
-                <p >
-                  Hoardspace Bookings Private Limited
-                </p>
-                <p>CIN NO: U63120OD2025PTC051640</p>
-                <p>PAN NO: AAICH3418E</p>
-                <p>TAN NO: BBNH01998D</p>
-                <p>CKYC NO: 90003349208072</p>
-                <p>GSTIN NO: 21AAICH3418E1Z3</p>
-              </div>
-            </div>
           </div>
 
           {/* Quick Links */}
-          <div>
+          {/* <div>
             <h3 className="text-slate-500 font-black text-[10px] uppercase tracking-[0.2em] mb-4">
               Quick Links
             </h3>
@@ -128,7 +112,7 @@ export default function Footer() {
                 </li>
               ))}
             </ul>
-          </div>
+          </div> */}
 
           {/* Categories */}
           <div>
@@ -166,6 +150,23 @@ export default function Footer() {
                 </li>
               ))}
             </ul>
+          </div>
+
+          {/* Company Registration Details */}
+          <div>
+            <h3 className="text-slate-500 font-black text-[10px] uppercase tracking-[0.2em] mb-4">
+              Company Details
+            </h3>
+            <div className="space-y-1.5 text-[11px] font-bold tracking-wider text-slate-700">
+              <p>
+                Hoardspace Bookings Private Limited
+              </p>
+              <p>CIN NO: U63120OD2025PTC051640</p>
+              <p>PAN NO: AAICH3418E</p>
+              <p>TAN NO: BBNH01998D</p>
+              <p>CKYC NO: 90003349208072</p>
+              <p>GSTIN NO: 21AAICH3418E1Z3</p>
+            </div>
           </div>
         </div>
 
