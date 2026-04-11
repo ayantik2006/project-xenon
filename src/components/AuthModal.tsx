@@ -123,6 +123,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const kycForm = useForm<KYCInput>({
     resolver: zodResolver(kycSchema),
+    mode: "onChange",
   });
 
   const resetModalState = () => {
@@ -1338,7 +1339,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     </label>
                     <input
                       {...kycForm.register("gstin")}
-                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none text-black"
+                      onInput={(e) => e.currentTarget.value = e.currentTarget.value.toUpperCase()}
+                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none text-black uppercase"
                       placeholder="GST Number"
                     />
                     {kycForm.formState.errors.gstin && (
@@ -1353,7 +1355,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     </label>
                     <input
                       {...kycForm.register("pan")}
-                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none text-black"
+                      onInput={(e) => e.currentTarget.value = e.currentTarget.value.toUpperCase()}
+                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-[#2563eb] outline-none text-black uppercase"
                       placeholder="PAN Number (e.g. ABCDE1234F)"
                     />
                     {kycForm.formState.errors.pan && (
@@ -1390,7 +1393,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !kycForm.formState.isValid}
                   className="w-full bg-[#2563eb] text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
                   {loading ? "Submitting..." : "Submit & Verify Phone"}
