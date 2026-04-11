@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { User, Menu, X, LayoutDashboard } from "lucide-react";
+import { User, Menu, X, LayoutDashboard, ShoppingCart } from "lucide-react";
 import AuthModal from "./AuthModal";
 import { checkAuth, logout } from "@/lib/fetchWithAuth";
 
@@ -74,11 +74,6 @@ export default function Navbar() {
                     Dashboard
                   </Link>
                 )}
-                {user?.role === "buyer" && (
-                  <Link href="/buyer/dashboard?tab=wishlist" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 transition-colors whitespace-nowrap h-full">
-                    Wishlist
-                  </Link>
-                )}
                 <Link href="/explore" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 transition-colors whitespace-nowrap h-full">
                   Explore
                 </Link>
@@ -99,6 +94,11 @@ export default function Navbar() {
                 <div className="hidden lg:flex items-center gap-2 h-full">
                   {user ? (
                     <div className="flex items-center gap-4 h-full">
+                      {user.role === "buyer" && (
+                        <Link href="/buyer/dashboard?tab=wishlist" className="flex items-center gap-1.5 text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 transition-colors">
+                          <ShoppingCart size={16} /> Wishlist
+                        </Link>
+                      )}
                       {!isDashboardPage && (
                         <Link href="/profile" className="flex items-center gap-1.5 text-xs uppercase tracking-widest font-black text-slate-700 hover:text-blue-600 transition-colors">
                           <User size={16} /> Profile
@@ -158,15 +158,6 @@ export default function Navbar() {
                 >
                   Explore
                 </Link>
-                {user?.role === "buyer" && (
-                  <Link 
-                    href="/buyer/dashboard?tab=wishlist" 
-                    onClick={() => setIsMenuOpen(false)}
-                    className="px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-700 hover:bg-blue-100 rounded-lg transition-all block w-full text-left"
-                  >
-                    Wishlist
-                  </Link>
-                )}
                 <Link 
                   href="/#how-it-works" 
                   onClick={() => setIsMenuOpen(false)}
@@ -201,6 +192,16 @@ export default function Navbar() {
                         <LayoutDashboard size={18} className="text-blue-500 shrink-0" />
                         Dashboard
                       </Link>
+                      {user.role === "buyer" && (
+                        <Link
+                          href="/buyer/dashboard?tab=wishlist"
+                          onClick={() => setIsMenuOpen(false)}
+                          className="flex items-center gap-4 px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-700 hover:bg-blue-100 rounded-lg transition-all w-full text-left"
+                        >
+                          <ShoppingCart size={18} className="text-orange-500 shrink-0" />
+                          Wishlist
+                        </Link>
+                      )}
                       {!isDashboardPage && (
                         <Link
                           href="/profile"
