@@ -876,7 +876,10 @@ function BuyerDashboardContent() {
                       <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Explore</span>
                     </Link>
                     <button
-                      onClick={() => setActiveTab("chat")}
+                      onClick={() => {
+                        const event = new CustomEvent("hoardspace-open-support-chat");
+                        window.dispatchEvent(event);
+                      }}
                       className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center gap-2 hover:bg-blue-50 transition-colors"
                     >
                       <MessageSquare className="text-gray-400" size={24} />

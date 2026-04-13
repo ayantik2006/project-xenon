@@ -81,7 +81,7 @@ export default function HowItWorks() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center max-w-4xl mx-auto mb-16">
           <h2 className="text-sm font-black text-blue-700 tracking-[0.2em] uppercase mb-4"></h2>
-          <h3 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight mb-6">
+          <h3 className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-slate-900 tracking-tight mb-6">
             How It <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-500 to-orange-500">Works</span>
           </h3>
           <p className="text-xl md:text-2xl text-slate-700 font-medium leading-relaxed">

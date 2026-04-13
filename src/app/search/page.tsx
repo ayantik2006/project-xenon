@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { MapPin, Home, X, Ruler, IndianRupee } from "lucide-react";
+import { MapPin, Home, X, Ruler, IndianRupee, ChevronRight } from "lucide-react";
 import BookNowButton from "@/components/BookNowButton";
 import AuthModal from "@/components/AuthModal";
 
@@ -135,40 +135,68 @@ function SearchPageContent() {
 
         {/* Results */}
         <div className="max-w-7xl mx-auto px-4 py-8">
-          {loading ? (
-            <div className="text-center py-20">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              <p className="mt-4 text-gray-600">Loading hoardings...</p>
-            </div>
-          ) : hoardings.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="bg-white rounded-2xl shadow-lg p-12 max-w-md mx-auto">
-                <Home size={64} className="mx-auto text-gray-300 mb-4" />
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                  No hoardings found
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Try adjusting your filters or{" "}
-                  {(city || type) && (
-                    <button
-                      onClick={clearFilters}
-                      className="text-blue-600 hover:text-blue-700 font-medium underline"
-                    >
-                      clear all filters
-                    </button>
-                  )}
-                  {!city && !type && "check back later for new listings"}
-                </p>
-                <Link
-                  href="/"
-                  className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-colors"
-                >
-                  Back to Home
-                </Link>
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Left Sidebar Filters (Sticky) */}
+            <aside className="w-full lg:w-72 flex-shrink-0 lg:sticky lg:top-32 h-fit">
+              <div className="bg-white border text-gray-800 rounded-3xl p-6 h-full shadow-sm border-gray-100">
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Filters</h2>
+                <div className="space-y-6">
+                  <div className="pb-6 border-b border-gray-100">
+                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Location</p>
+                    <div className="text-sm font-bold text-blue-600 bg-blue-50 px-4 py-3 rounded-xl border border-blue-100">
+                      {city || "All Cities"}
+                    </div>
+                  </div>
+                  <div className="pb-6 border-b border-gray-100">
+                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Hoarding Type</p>
+                    <div className="text-sm font-bold text-purple-600 bg-purple-50 px-4 py-3 rounded-xl border border-purple-100">
+                      {type || "All Types"}
+                    </div>
+                  </div>
+                  <div className="pt-2">
+                    <Link href="/explore" className="text-xs font-bold text-blue-600 uppercase tracking-widest hover:underline flex items-center gap-1">
+                      More detailed filters <ChevronRight size={14} />
+                    </Link>
+                  </div>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </aside>
+
+            {/* Main Content Area */}
+            <div className="flex-1">
+              {loading ? (
+                <div className="text-center py-20">
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  <p className="mt-4 text-gray-600">Loading hoardings...</p>
+                </div>
+              ) : hoardings.length === 0 ? (
+                <div className="text-center py-20">
+                  <div className="bg-white rounded-2xl shadow-lg p-12 max-w-md mx-auto">
+                    <Home size={64} className="mx-auto text-gray-300 mb-4" />
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                      No hoardings found
+                    </h2>
+                    <p className="text-gray-600 mb-6">
+                      Try adjusting your filters or{" "}
+                      {(city || type) && (
+                        <button
+                          onClick={clearFilters}
+                          className="text-blue-600 hover:text-blue-700 font-medium underline"
+                        >
+                          clear all filters
+                        </button>
+                      )}
+                    </p>
+                    <Link
+                      href="/"
+                      className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-colors"
+                    >
+                      Back to Home
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {hoardings.map((hoarding) => (
                 <div
                   key={hoarding._id}
@@ -249,8 +277,10 @@ function SearchPageContent() {
                   </div>
                 </div>
               ))}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
 

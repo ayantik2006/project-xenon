@@ -62,30 +62,68 @@ export default function Navbar() {
               </div>
 
               {/* Center: Global Navigation Links */}
-              <div className="hidden lg:flex flex-1 justify-center items-center gap-6 xl:gap-8 font-sans h-full">
-                <Link href="/#home" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 transition-colors whitespace-nowrap h-full">
-                  Home
-                </Link>
-                {user && (
-                  <Link
-                    href={`/${user.role}/dashboard`}
-                    className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 transition-colors whitespace-nowrap h-full"
-                  >
-                    Dashboard
-                  </Link>
+              <div className="hidden lg:flex flex-1 justify-center items-center gap-2 xl:gap-4 font-sans h-full">
+                {user ? (
+                  <>
+                    <Link href="/" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-full transition-all whitespace-nowrap">
+                      Home
+                    </Link>
+                    <Link
+                      href={`/${user.role}/dashboard`}
+                      className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-full transition-all whitespace-nowrap"
+                    >
+                      Dashboard
+                    </Link>
+                    
+                    {/* Explore Superbutton */}
+                    <div className="relative group h-full flex items-center">
+                      <Link href="/explore" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-full transition-all whitespace-nowrap">
+                        Explore
+                      </Link>
+                      <div className="absolute top-full left-0 mt-0 w-48 bg-white border border-gray-100 shadow-xl rounded-2xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-left -translate-y-2 group-hover:translate-y-0 z-[60]">
+                        <Link href="/buyer/dashboard?tab=wishlist" className="block px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-colors">
+                          Wishlist
+                        </Link>
+                      </div>
+                    </div>
+
+                    {/* More Superbutton */}
+                    <div className="relative group h-full flex items-center">
+                      <button className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-full transition-all whitespace-nowrap">
+                        More
+                      </button>
+                      <div className="absolute top-full left-0 mt-0 w-48 bg-white border border-gray-100 shadow-xl rounded-2xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-left -translate-y-2 group-hover:translate-y-0 z-[60]">
+                        <Link href="/about" className="block px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-colors">
+                          About Us
+                        </Link>
+                        <Link href="/#how-it-works" className="block px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-colors">
+                          How It Works
+                        </Link>
+                        <Link href="/contact" className="block px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-colors">
+                          Contact Us
+                        </Link>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Link href="/#home" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-full transition-all whitespace-nowrap">
+                      Home
+                    </Link>
+                    <Link href="/explore" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-full transition-all whitespace-nowrap">
+                      Explore
+                    </Link>
+                    <Link href="/#how-it-works" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-full transition-all whitespace-nowrap">
+                      How It Works
+                    </Link>
+                    <Link href="/about" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-full transition-all whitespace-nowrap">
+                      About Us
+                    </Link>
+                    <Link href="/contact" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-full transition-all whitespace-nowrap">
+                      Contact
+                    </Link>
+                  </>
                 )}
-                <Link href="/explore" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 transition-colors whitespace-nowrap h-full">
-                  Explore
-                </Link>
-                <Link href="/#how-it-works" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 transition-colors whitespace-nowrap h-full">
-                  How It Works
-                </Link>
-                <Link href="/about" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 transition-colors whitespace-nowrap h-full">
-                  About Us
-                </Link>
-                <Link href="/contact" className="flex items-center text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 transition-colors whitespace-nowrap h-full">
-                  Contact
-                </Link>
               </div>
 
               {/* Right: CTA Actions & Mobile Toggle */}
@@ -94,22 +132,11 @@ export default function Navbar() {
                 <div className="hidden lg:flex items-center gap-2 h-full">
                   {user ? (
                     <div className="flex items-center gap-4 h-full">
-                      {user.role === "buyer" && (
-                        <Link href="/buyer/dashboard?tab=wishlist" className="flex items-center gap-1.5 text-xs uppercase tracking-widest font-black text-slate-700 hover:text-orange-600 transition-colors">
-                          <ShoppingCart size={16} /> Wishlist
-                        </Link>
-                      )}
-                      {!isDashboardPage && (
-                        <Link href="/profile" className="flex items-center gap-1.5 text-xs uppercase tracking-widest font-black text-slate-700 hover:text-blue-600 transition-colors">
-                          <User size={16} /> Profile
-                        </Link>
-                      )}
                       <button 
                         onClick={handleLogout} 
-                        className="flex items-center gap-2 rounded-lg py-1.5 px-3 bg-red-50 text-red-600 hover:bg-red-100 transition-colors cursor-pointer duration-300"
+                        className="flex items-center gap-2 rounded-[2rem] py-2 px-6 bg-slate-800 text-white hover:bg-orange-600 hover:shadow-lg hover:shadow-orange-100 transition-all cursor-pointer duration-300 transform active:scale-95"
                       >
-                        <X size={16} />
-                        <span className="text-xs uppercase tracking-widest font-black">
+                         <span className="text-[10px] uppercase tracking-[0.2em] font-black">
                           Logout
                         </span>
                       </button>
@@ -122,7 +149,7 @@ export default function Navbar() {
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-200 text-blue-700">
                         <User size={18} />
                       </div>
-                      <span className="hidden sm:inline text-xs uppercase tracking-widest font-black">
+                      <span className="hidden sm:inline text-xs uppercase tracking-widest font-black text-slate-700">
                         REGISTER
                       </span>
                     </button>
@@ -151,13 +178,33 @@ export default function Navbar() {
                 >
                   Home
                 </Link>
-                <Link 
-                  href="/explore" 
-                  onClick={() => setIsMenuOpen(false)}
-                  className="px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-700 hover:bg-blue-100 rounded-lg transition-all block w-full text-left"
-                >
-                  Explore
-                </Link>
+                {user ? (
+                   <>
+                    <Link 
+                      href={`/${user.role}/dashboard`}
+                      onClick={() => setIsMenuOpen(false)}
+                      className="px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-700 hover:bg-blue-100 rounded-lg transition-all block w-full text-left"
+                    >
+                      Dashboard
+                    </Link>
+                    <Link 
+                      href="/explore" 
+                      onClick={() => setIsMenuOpen(false)}
+                      className="px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-700 hover:bg-blue-100 rounded-lg transition-all block w-full text-left"
+                    >
+                      Explore
+                    </Link>
+                   </>
+                ) : (
+                  <Link 
+                    href="/explore" 
+                    onClick={() => setIsMenuOpen(false)}
+                    className="px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-700 hover:bg-blue-100 rounded-lg transition-all block w-full text-left"
+                  >
+                    Explore
+                  </Link>
+                )}
+                
                 <Link 
                   href="/#how-it-works" 
                   onClick={() => setIsMenuOpen(false)}
@@ -184,14 +231,6 @@ export default function Navbar() {
                 <div className="mt-4 pt-4 border-t border-blue-100 space-y-2">
                   {user ? (
                     <>
-                      <Link
-                        href={`/${user.role}/dashboard`}
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center gap-4 px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-700 hover:bg-blue-100 rounded-lg transition-all w-full text-left"
-                      >
-                        <LayoutDashboard size={18} className="text-blue-500 shrink-0" />
-                        Dashboard
-                      </Link>
                       {user.role === "buyer" && (
                         <Link
                           href="/buyer/dashboard?tab=wishlist"
@@ -200,16 +239,6 @@ export default function Navbar() {
                         >
                           <ShoppingCart size={18} className="text-orange-500 shrink-0" />
                           Wishlist
-                        </Link>
-                      )}
-                      {!isDashboardPage && (
-                        <Link
-                          href="/profile"
-                          onClick={() => setIsMenuOpen(false)}
-                          className="flex items-center gap-4 px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-700 hover:bg-blue-100 rounded-lg transition-all w-full text-left"
-                        >
-                          <User size={18} className="text-blue-500 shrink-0" />
-                          Profile
                         </Link>
                       )}
                       <button 
